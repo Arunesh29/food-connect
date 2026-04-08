@@ -107,6 +107,43 @@ export function AppProvider({ children }) {
     addNotification('Welcome!', `Signed in as ${role}`);
   }, []);
 
+  // Email/Password register
+  const registerWithEmail = useCallback(async (email, password, name) => {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = result.user;
+      return {
+        uid: firebaseUser.uid,
+        name: name,
+        email: firebaseUser.email,
+        photoURL: null
+      };
+    } catch (error) {
+      if (error.code === 'auth/email-already-in-use') throw new Error('Email already registered');
+      throw error;
+    }
+  }, []);
+
+  // Email/Password login
+  const loginWithEmail = useCallback(async (email, password) => {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = result.user;
+      const profile = await getUserProfile(firebaseUser.uid);
+      
+      return {
+        uid: firebaseUser.uid,
+        name: profile?.name || firebaseUser.displayName || 'User',
+        email: firebaseUser.email,
+        photoURL: profile?.photoURL || firebaseUser.photoURL || null,
+        role: profile?.role || null // might be null if legacy user or just registered
+      };
+    } catch (error) {
+      if (error.code === 'auth/invalid-credential') throw new Error('Invalid email or password');
+      throw error;
+    }
+  }, []);
+
   // Admin login with email/password
   const loginAsAdmin = useCallback(async (email, password) => {
     try {
@@ -123,7 +160,7 @@ export function AppProvider({ children }) {
         uid: firebaseUser.uid,
         name: profile.name || firebaseUser.displayName || 'Admin',
         email: firebaseUser.email,
-        photoURL: firebaseUser.photoURL || null,
+        photoURL: profile.photoURL || null,
         role: 'admin',
         id: `admin_${firebaseUser.uid}`
       };
@@ -137,9 +174,6 @@ export function AppProvider({ children }) {
       }
       if (error.code === 'auth/user-not-found') {
         throw new Error('No admin account found with this email');
-      }
-      if (error.code === 'auth/too-many-requests') {
-        throw new Error('Too many failed attempts. Try again later.');
       }
       throw error;
     }
@@ -178,7 +212,8 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      user, logout, loginWithGoogle, setUserRole, loginAsAdmin, authLoading,
+      user, logout, loginWithGoogle, setUserRole, loginAsAdmin,
+      loginWithEmail, registerWithEmail, authLoading,
       toasts, addToast, removeToast,
       notifications, addNotification, markAllNotificationsRead
     }}>
