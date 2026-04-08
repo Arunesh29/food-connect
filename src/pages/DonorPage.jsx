@@ -7,7 +7,7 @@ import { Plus, Upload, Clock, Zap, Image as ImageIcon, X, Leaf, Utensils, Box, A
 
 export default function DonorPage() {
   const { user, addToast, addNotification } = useApp();
-  const { foods, loading } = useFoods(f => user?.role === 'admin' ? true : f.donorId === user?.id);
+  const { foods, loading } = useFoods(f => user?.role === 'admin' ? true : f.donorId === user?.uid);
   const [submitting, setSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -64,7 +64,7 @@ export default function DonorPage() {
         imageUrl,
         expiryTime,
         pickupOption: form.pickupOption,
-        donorId: user.id,
+        donorId: user.uid,
         donorName: user.name
       });
 
