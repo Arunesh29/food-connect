@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { useFoods, addFood, uploadImage } from '../services/foodService';
+import { useFoods, addFood, uploadImage, deleteFood } from '../services/foodService';
 import FoodCard from '../components/FoodCard';
 import SkeletonCard from '../components/SkeletonCard';
-import { Plus, Upload, Clock, Zap, Image as ImageIcon, X, Leaf, Utensils, Box, Apple } from 'lucide-react';
+import { Plus, Upload, Clock, Zap, Image as ImageIcon, X, Leaf, Utensils, Box, Apple, Trash } from 'lucide-react';
 
 export default function DonorPage() {
   const { user, addToast, addNotification } = useApp();
@@ -268,11 +268,32 @@ export default function DonorPage() {
                   showRequests
                   actions={
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'space-between' }}>
-                      <span className={`badge badge-${food.status}`}>{food.status}</span>
-                      {food.requestedUsers?.length > 0 && (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--orange-600)', fontWeight: 600 }}>
-                          {food.requestedUsers.length} request(s)
-                        </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className={`badge badge-${food.status}`}>{food.status}</span>
+                        {food.requestedUsers?.length > 0 && (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--orange-600)', fontWeight: 600 }}>
+                            {food.requestedUsers.length} request(s)
+                          </span>
+                        )}
+                      </div>
+                      {food.status === 'available' && (
+                        <button 
+                          className="btn btn-ghost btn-sm" 
+                          style={{ color: 'var(--error)', padding: '4px' }}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Are you sure you want to cancel listing "${food.name}"?`)) {
+                              try {
+                                await deleteFood(food.id);
+                                addToast('success', 'Listing Cancelled', 'Food item has been removed.');
+                              } catch (err) {
+                                addToast('error', 'Failed to Cancel', 'You do not have permission to delete this.');
+                              }
+                            }
+                          }}
+                        >
+                          <Trash size={16} />
+                        </button>
                       )}
                     </div>
                   }

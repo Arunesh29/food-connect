@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverTimestamp, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 
@@ -174,6 +174,15 @@ export async function rateDelivery(foodId, rating, foodRating) {
     return;
   }
   await updateDoc(doc(db, 'foods', foodId), { rating, foodRating });
+}
+
+export async function deleteFood(foodId) {
+  if (USE_LOCAL) {
+    localFoods = localFoods.filter(f => f.id !== foodId);
+    notifyListeners();
+    return;
+  }
+  await deleteDoc(doc(db, 'foods', foodId));
 }
 
 export async function uploadImage(file) {
