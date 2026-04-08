@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useFoods, addFood, uploadImage } from '../services/foodService';
 import FoodCard from '../components/FoodCard';
@@ -7,7 +7,11 @@ import { Plus, Upload, Clock, Zap, Image as ImageIcon, X, Leaf, Utensils, Box, A
 
 export default function DonorPage() {
   const { user, addToast, addNotification } = useApp();
-  const { foods, loading } = useFoods(f => user?.role === 'admin' ? true : f.donorId === user?.uid);
+  const filter = useMemo(() => {
+    return (f) => user?.role === 'admin' ? true : f.donorId === user?.uid;
+  }, [user?.uid, user?.role]);
+
+  const { foods, loading } = useFoods(filter);
   const [submitting, setSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -75,8 +79,8 @@ export default function DonorPage() {
       setImagePreview(null);
       setImageFile(null);
     } catch (err) {
-      addToast('error', 'Error', 'Failed to post food. Please try again.');
-      console.error(err);
+      addToast('error', 'Posting Failed', err.message || 'Check your internet or image size.');
+      console.error('Firestore/Storage Error:', err);
     }
 
     setSubmitting(false);

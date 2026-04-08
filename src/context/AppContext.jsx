@@ -136,8 +136,7 @@ export function AppProvider({ children }) {
         name: profile?.name || firebaseUser.displayName || 'User',
         email: firebaseUser.email,
         photoURL: profile?.photoURL || firebaseUser.photoURL || null,
-        role: profile?.role || null,
-        id: profile?.role ? `${profile.role}_${firebaseUser.uid}` : null
+        role: profile?.role || null
       };
     } catch (error) {
       if (error.code === 'auth/invalid-credential') throw new Error('Invalid email or password');

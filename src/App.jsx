@@ -56,9 +56,14 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<HomePage />} />
 
-        {/* Regular login — redirect away if already logged in */}
+        {/* Regular login */}
         <Route path="/login" element={
-          user ? <Navigate to={`/${user.role === 'admin' ? 'admin' : user.role}`} replace /> : <LoginPage />
+          user ? <Navigate to="/select-role" replace /> : <LoginPage />
+        } />
+
+        {/* New Role Selection Route */}
+        <Route path="/select-role" element={
+          <ProtectedRoute><LoginPage selectionOnly /></ProtectedRoute>
         } />
 
         {/* Admin login — separate secure page */}

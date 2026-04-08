@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Heart, HandHeart, Truck, ArrowRight, Leaf, Lock } from 'lucide-react';
 
-export default function LoginPage() {
-  const { loginWithGoogle, setUserRole, addToast, loginWithEmail, registerWithEmail } = useApp();
+export default function LoginPage({ selectionOnly }) {
+  const { user, loginWithGoogle, setUserRole, addToast, loginWithEmail, registerWithEmail } = useApp();
   const navigate = useNavigate();
-  const [step, setStep] = useState('login'); // login, email, role
+  
+  // If selectionOnly is true, we skip sign-in and start at role step
+  const [step, setStep] = useState(selectionOnly ? 'role' : 'login'); 
   const [isRegister, setIsRegister] = useState(false);
-  const [googleUser, setGoogleUser] = useState(null);
+  const [googleUser, setGoogleUser] = useState(selectionOnly ? user : null);
   const [signingIn, setSigningIn] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '', name: '' });
 

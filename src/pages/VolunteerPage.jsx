@@ -18,7 +18,7 @@ export default function VolunteerPage() {
       return foods.filter(f => f.status === 'requested');
     }
     if (tab === 'assigned') {
-      return foods.filter(f => f.status === 'assigned' && f.assignedVolunteer === user?.id);
+      return foods.filter(f => f.status === 'assigned' && f.assignedVolunteer === user?.uid);
     }
     if (tab === 'delivered') {
       return foods.filter(f => f.status === 'delivered');
@@ -29,7 +29,7 @@ export default function VolunteerPage() {
   async function handleAccept(food) {
     setProcessing(food.id);
     try {
-      await acceptDelivery(food.id, user.id);
+      await acceptDelivery(food.id, user.uid);
       addToast('success', 'Delivery Accepted!', `You're now delivering "${food.name}"`);
       addNotification('Delivery Accepted', `You accepted delivery of "${food.name}"`);
       setTab('assigned');

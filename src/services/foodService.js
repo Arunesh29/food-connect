@@ -54,7 +54,7 @@ export function useFoods(filterFn) {
       setLoading(false);
     });
     return unsub;
-  }, []);
+  }, [filterFn]); // Re-run if filter logic changes
 
   return { foods, loading };
 }

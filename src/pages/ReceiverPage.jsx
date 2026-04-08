@@ -31,7 +31,7 @@ export default function ReceiverPage() {
   async function handleRequest(food) {
     setRequesting(food.id);
     try {
-      await requestFood(food.id, user.id);
+      await requestFood(food.id, user.uid);
       addToast('success', 'Food Requested!', `You requested "${food.name}"`);
       addNotification('Request Sent', `Your request for "${food.name}" has been submitted`);
       setShowConfirm(null);
@@ -41,7 +41,7 @@ export default function ReceiverPage() {
     setRequesting(null);
   }
 
-  const alreadyRequested = (food) => food.requestedUsers?.includes(user?.id);
+  const alreadyRequested = (food) => food.requestedUsers?.includes(user?.uid);
 
   return (
     <div className="container page-content">
