@@ -55,7 +55,12 @@ export default function DonorPage() {
     try {
       let imageUrl = '';
       if (imageFile) {
-        imageUrl = await uploadImage(imageFile);
+        try {
+          imageUrl = await uploadImage(imageFile);
+        } catch (storageErr) {
+          console.warn('Storage failed/blocked. Falling back to default category image.', storageErr);
+          // imageUrl remains empty, addFood will handle the fallback
+        }
       }
 
       const expiryTime = new Date(Date.now() + parseInt(form.expiryHours) * 60 * 60 * 1000).toISOString();

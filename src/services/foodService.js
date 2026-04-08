@@ -8,6 +8,13 @@ const USE_LOCAL = false;
 
 let localFoods = [];
 
+const CATEGORY_IMAGES = {
+  veg: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800',
+  'non-veg': 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800',
+  packed: 'https://images.unsplash.com/photo-1614732414444-096e5f1122d5?auto=format&fit=crop&q=80&w=800',
+  fresh: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=80&w=800'
+};
+
 let listeners = [];
 function notifyListeners() {
   listeners.forEach(fn => fn([...localFoods]));
@@ -74,8 +81,12 @@ export async function addFood(data) {
     return newFood.id;
   }
 
+  // Use fallback image if none provided
+  const finalImageUrl = data.imageUrl || CATEGORY_IMAGES[data.category] || CATEGORY_IMAGES.veg;
+
   const docRef = await addDoc(collection(db, 'foods'), {
     ...data,
+    imageUrl: finalImageUrl,
     status: 'available',
     requestedUsers: [],
     assignedVolunteer: null,
