@@ -9,6 +9,7 @@ import DonorPage from './pages/DonorPage';
 import ReceiverPage from './pages/ReceiverPage';
 import VolunteerPage from './pages/VolunteerPage';
 import AdminPage from './pages/AdminPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Loading screen while auth state resolves
 function AuthLoading() {
@@ -83,6 +84,9 @@ function AppRoutes() {
         } />
         <Route path="/admin" element={
           <ProtectedRoute role="admin" adminRedirect><AdminPage /></ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute><ProfilePage /></ProtectedRoute>
         } />
 
         {/* Catch-all redirect */}

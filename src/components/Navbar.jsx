@@ -126,15 +126,18 @@ export default function Navbar() {
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div className="nav-user-info">
-                  <span className="nav-user-name">{user.name}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="nav-user-role">{user.role}</span>
-                    <Link to="/select-role" style={{ fontSize: '0.65rem', color: 'var(--blue-600)', fontWeight: 600, textDecoration: 'underline' }}>
-                      Switch
-                    </Link>
+                  <div className="nav-user-info">
+                    <span className="nav-user-name">{user.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Link to="/profile" style={{ fontSize: '0.65rem', color: 'var(--green-600)', fontWeight: 600 }}>
+                        Profile
+                      </Link>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--slate-300)' }}>•</span>
+                      <Link to="/select-role" style={{ fontSize: '0.65rem', color: 'var(--orange-600)', fontWeight: 600 }}>
+                        Switch
+                      </Link>
+                    </div>
                   </div>
-                </div>
                 <button className="btn-logout" onClick={logout}>
                   <LogOut size={14} />
                 </button>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://food-connect-arunesh.vercel.app/sitemap.xml

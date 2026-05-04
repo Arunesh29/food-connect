@@ -1,0 +1,17 @@
+{
+  "name": "Food Connect",
+  "short_name": "FoodConnect",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#16a34a",
+  "description": "Connecting surplus food with those in need.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2927/2927347.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
