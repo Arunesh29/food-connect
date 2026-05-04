@@ -1,17 +1,12 @@
-export default function SkeletonCard({ count = 3 }) {
-  return (
-    <>
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="skeleton-card" style={{ animation: `fadeIn 0.3s ${i * 0.1}s ease both` }}>
-          <div className="skeleton skeleton-image" />
-          <div className="skeleton-body">
-            <div className="skeleton skeleton-text lg" />
-            <div className="skeleton skeleton-text" />
-            <div className="skeleton skeleton-text sm" />
-            <div style={{ height: '36px', marginTop: '8px' }} className="skeleton" />
-          </div>
-        </div>
-      ))}
-    </>
-  );
+export default function SkeletonCard({ count = 1 }) {
+  return Array.from({ length: count }).map((_, i) => (
+    <div key={i} className="skeleton-card">
+      <div className="skeleton" style={{ height: 220 }} />
+      <div style={{ padding: 20 }}>
+        <div className="skeleton" style={{ height: 20, width: '70%', marginBottom: 10 }} />
+        <div className="skeleton" style={{ height: 14, width: '50%', marginBottom: 8 }} />
+        <div className="skeleton" style={{ height: 14, width: '40%' }} />
+      </div>
+    </div>
+  ));
 }

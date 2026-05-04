@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Shield, Lock, Eye, EyeOff, ArrowLeft, AlertTriangle, Fingerprint } from 'lucide-react';
 
@@ -16,149 +16,120 @@ export default function AdminLoginPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-
-    if (!email.trim() || !password.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    if (attempts >= 5) {
-      setError('Too many failed attempts. Please try again later.');
-      return;
-    }
+    if (!email.trim() || !password.trim()) { setError('Please fill in all fields.'); return; }
+    if (attempts >= 5) { setError('Too many failed attempts. Please try again later.'); return; }
 
     setLoading(true);
     try {
       await loginAsAdmin(email, password);
-      addToast('success', 'Welcome, Admin!', 'You have full dashboard access');
+      addToast('success', 'Welcome, Admin!', 'You have full dashboard access.');
       navigate('/admin');
     } catch (err) {
-      setAttempts(prev => prev + 1);
-      setError(err.message || 'Authentication failed');
-      addToast('error', 'Access Denied', err.message || 'Invalid credentials');
+      setAttempts(p => p + 1);
+      setError(err.message || 'Authentication failed.');
     }
     setLoading(false);
   }
 
   return (
-    <div className="login-page" style={{
-      background: 'linear-gradient(135deg, var(--slate-900) 0%, var(--slate-800) 50%, var(--slate-900) 100%)'
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: '#0f0f0f', padding: 20,
     }}>
-      <div className="login-card" style={{
-        background: 'rgba(255,255,255,0.05)',
+      <div style={{
+        width: '100%', maxWidth: 420,
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.09)',
+        borderRadius: 'var(--radius-xl)',
+        padding: '48px 40px',
         backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        color: 'white',
-        maxWidth: '420px'
       }}>
-        {/* Header */}
-        <div className="login-header">
+        {/* Icon */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{
-            width: 64, height: 64, borderRadius: 'var(--radius-xl)',
-            background: 'linear-gradient(135deg, rgba(239,68,68,0.2), rgba(249,115,22,0.2))',
-            border: '1px solid rgba(239,68,68,0.3)',
+            width: 64, height: 64, borderRadius: 'var(--radius-lg)',
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px',
-            boxShadow: '0 0 30px rgba(239,68,68,0.15)'
+            margin: '0 auto 20px',
           }}>
-            <Shield size={28} style={{ color: '#f87171' }} />
+            <Shield size={28} color="#f87171" />
           </div>
-          <h2 style={{ color: 'white', fontSize: '1.4rem' }}>Admin Access</h2>
-          <p style={{ color: 'var(--slate-400)', fontSize: '0.85rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', color: 'white', marginBottom: 6 }}>
+            Admin Access
+          </h1>
+          <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.4)' }}>
             Restricted area — authorized personnel only
           </p>
         </div>
 
-        {/* Security Badge */}
+        {/* Security badge */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '10px 14px', background: 'rgba(255,255,255,0.05)',
-          borderRadius: 'var(--radius-md)', marginBottom: '24px',
-          border: '1px solid rgba(255,255,255,0.08)'
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
+          borderRadius: 'var(--radius-md)', marginBottom: 28,
+          border: '1px solid rgba(255,255,255,0.07)',
         }}>
-          <Fingerprint size={16} style={{ color: 'var(--slate-400)' }} />
-          <span style={{ fontSize: '0.75rem', color: 'var(--slate-400)', letterSpacing: '0.03em' }}>
-            🔒 Encrypted connection • Session monitored
+          <Fingerprint size={14} color="rgba(255,255,255,0.35)" />
+          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)' }}>
+            🔒 Encrypted connection · Session monitored
           </span>
         </div>
 
-        {/* Error Message */}
+        {/* Error */}
         {error && (
           <div style={{
-            display: 'flex', gap: '10px', padding: '12px 14px',
+            display: 'flex', gap: 10, padding: '12px 14px',
             background: 'rgba(239,68,68,0.1)', borderRadius: 'var(--radius-md)',
-            border: '1px solid rgba(239,68,68,0.3)', marginBottom: '20px',
-            animation: 'scaleIn 0.3s ease'
+            border: '1px solid rgba(239,68,68,0.25)', marginBottom: 20,
           }}>
-            <AlertTriangle size={16} style={{ color: '#f87171', flexShrink: 0, marginTop: 2 }} />
-            <p style={{ fontSize: '0.82rem', color: '#fca5a5', lineHeight: 1.5 }}>
-              {error}
-            </p>
+            <AlertTriangle size={15} color="#f87171" style={{ flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: '0.82rem', color: '#fca5a5', lineHeight: 1.5 }}>{error}</p>
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label" style={{ color: 'var(--slate-300)' }}>
-              Admin Email
-            </label>
+          {/* Email */}
+          <div className="field">
+            <label className="field-label" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin email</label>
             <input
               type="email"
-              className="form-input"
+              className="field-input"
               placeholder="admin@foodconnect.com"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(''); }}
+              onChange={e => { setEmail(e.target.value); setError(''); }}
               autoFocus
               autoComplete="email"
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '2px solid rgba(255,255,255,0.1)',
-                color: 'white',
-              }}
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.1)', color: 'white' }}
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label" style={{ color: 'var(--slate-300)' }}>
-              Password
-            </label>
+          {/* Password */}
+          <div className="field">
+            <label className="field-label" style={{ color: 'rgba(255,255,255,0.5)' }}>Password</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="form-input"
+                className="field-input"
                 placeholder="Enter admin password"
                 value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                onChange={e => { setPassword(e.target.value); setError(''); }}
                 autoComplete="current-password"
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '2px solid rgba(255,255,255,0.1)',
-                  color: 'white',
-                  paddingRight: '48px'
-                }}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.1)', color: 'white', paddingRight: 44 }}
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute', right: '12px', top: '50%',
-                  transform: 'translateY(-50%)', color: 'var(--slate-400)',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  padding: '4px'
-                }}
+                onClick={() => setShowPassword(v => !v)}
+                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
             </div>
           </div>
 
           {/* Attempt counter */}
           {attempts > 0 && (
-            <p style={{
-              fontSize: '0.75rem', color: attempts >= 3 ? '#f87171' : 'var(--slate-400)',
-              marginBottom: '16px', textAlign: 'right'
-            }}>
+            <p style={{ fontSize: '0.75rem', color: attempts >= 3 ? '#f87171' : 'rgba(255,255,255,0.3)', marginBottom: 16, textAlign: 'right' }}>
               {5 - attempts} attempt{5 - attempts !== 1 ? 's' : ''} remaining
             </p>
           )}
@@ -167,34 +138,16 @@ export default function AdminLoginPage() {
             type="submit"
             className="btn btn-lg"
             disabled={loading || attempts >= 5}
-            style={{
-              width: '100%',
-              background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-              color: 'white',
-              boxShadow: '0 4px 14px rgba(239,68,68,0.3)',
-              marginBottom: '16px'
-            }}
+            style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', marginBottom: 20 }}
           >
-            {loading ? (
-              <><span className="spinner" /> Authenticating...</>
-            ) : (
-              <><Lock size={16} /> Sign In as Admin</>
-            )}
+            {loading ? <><span className="spinner" style={{ borderColor: 'white', borderRightColor: 'transparent' }} /> Authenticating…</> : <><Lock size={16} /> Sign in as Admin</>}
           </button>
         </form>
 
-        {/* Back to regular login */}
-        <div style={{ textAlign: 'center', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              fontSize: '0.82rem', color: 'var(--slate-400)',
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              background: 'none', border: 'none', cursor: 'pointer'
-            }}
-          >
-            <ArrowLeft size={14} /> Back to regular login
-          </button>
+        <div style={{ textAlign: 'center', paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          <Link to="/login" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.35)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <ArrowLeft size={13} /> Back to regular login
+          </Link>
         </div>
       </div>
     </div>

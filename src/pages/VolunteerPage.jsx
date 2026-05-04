@@ -3,209 +3,172 @@ import { useApp } from '../context/AppContext';
 import { useFoods, acceptDelivery, markDelivered } from '../services/foodService';
 import FoodCard from '../components/FoodCard';
 import SkeletonCard from '../components/SkeletonCard';
-import Modal from '../components/Modal';
-import { Truck, CheckCircle, MapPin, Navigation, Clock, Package, Check } from 'lucide-react';
+import { Truck, CheckCircle, MapPin, X, Package, Navigation } from 'lucide-react';
 
 export default function VolunteerPage() {
   const { user, addToast, addNotification } = useApp();
   const { foods, loading } = useFoods();
-  const [tab, setTab] = useState('requested');
+  const [tab, setTab] = useState('available');
   const [processing, setProcessing] = useState(null);
-  const [showTracking, setShowTracking] = useState(null);
+  const [tracking, setTracking] = useState(null);
 
-  const filteredFoods = useMemo(() => {
-    if (tab === 'requested') {
-      return foods.filter(f => f.status === 'requested');
-    }
-    if (tab === 'assigned') {
-      return foods.filter(f => f.status === 'assigned' && f.assignedVolunteer === user?.uid);
-    }
-    if (tab === 'delivered') {
-      return foods.filter(f => f.status === 'delivered');
-    }
+  const filtered = useMemo(() => {
+    if (tab === 'available') return foods.filter(f => f.status === 'requested');
+    if (tab === 'mine') return foods.filter(f => f.status === 'assigned' && f.assignedVolunteer === user?.uid);
+    if (tab === 'done') return foods.filter(f => f.status === 'delivered' && f.assignedVolunteer === user?.uid);
     return [];
   }, [foods, tab, user]);
 
-  async function handleAccept(food) {
+  async function accept(food) {
     setProcessing(food.id);
     try {
       await acceptDelivery(food.id, user.uid);
-      addToast('success', 'Delivery Accepted!', `You're now delivering "${food.name}"`);
-      addNotification('Delivery Accepted', `You accepted delivery of "${food.name}"`);
-      setTab('assigned');
-    } catch (err) {
-      addToast('error', 'Error', 'Failed to accept delivery');
+      addToast('success', 'Delivery accepted!', `You're now handling "${food.name}".`);
+      addNotification('Delivery assigned', `You accepted delivery of "${food.name}".`);
+      setTab('mine');
+    } catch {
+      addToast('error', 'Failed', 'Could not accept this delivery.');
     }
     setProcessing(null);
   }
 
-  async function handleDeliver(food) {
+  async function complete(food) {
     setProcessing(food.id);
     try {
       await markDelivered(food.id);
-      addToast('success', 'Delivered!', `"${food.name}" has been marked as delivered 🎉`);
-      addNotification('Delivery Complete', `You delivered "${food.name}" successfully`);
-    } catch (err) {
-      addToast('error', 'Error', 'Failed to mark as delivered');
+      addToast('success', 'Delivery complete! 🎉', `"${food.name}" was delivered successfully.`);
+      setTracking(null);
+    } catch {
+      addToast('error', 'Failed', 'Could not mark as delivered.');
     }
     setProcessing(null);
   }
 
+  const tabItems = [
+    { id: 'available', label: 'Needs delivery', count: foods.filter(f => f.status === 'requested').length },
+    { id: 'mine', label: 'My deliveries', count: foods.filter(f => f.status === 'assigned' && f.assignedVolunteer === user?.uid).length },
+    { id: 'done', label: 'Completed', count: foods.filter(f => f.status === 'delivered' && f.assignedVolunteer === user?.uid).length },
+  ];
+
   return (
-    <div className="container page-content">
-      <div className="page-header">
-        <h1 className="page-title">🚚 Volunteer Dashboard</h1>
-        <p className="page-subtitle">Accept delivery requests and help food reach those in need</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="tabs">
-        <button className={`tab ${tab === 'requested' ? 'active' : ''}`} onClick={() => setTab('requested')}>
-          🟡 Requested
-        </button>
-        <button className={`tab ${tab === 'assigned' ? 'active' : ''}`} onClick={() => setTab('assigned')}>
-          🔵 My Deliveries
-        </button>
-        <button className={`tab ${tab === 'delivered' ? 'active' : ''}`} onClick={() => setTab('delivered')}>
-          ✅ Completed
-        </button>
-      </div>
-
-      {/* Food Grid */}
-      {loading ? (
-        <div className="food-grid">
-          <SkeletonCard count={4} />
+    <div className="page-shell">
+      <div className="wrap section">
+        <div style={{ marginBottom: 40 }}>
+          <span className="label-caps" style={{ marginBottom: 10, display: 'block' }}>Volunteer Dashboard</span>
+          <h1 className="display-lg">Deliveries</h1>
+          <p className="body-lg" style={{ marginTop: 10 }}>Pick up food from donors and deliver it to those who need it.</p>
         </div>
-      ) : filteredFoods.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">
-            {tab === 'requested' ? '📋' : tab === 'assigned' ? '🚚' : '✅'}
-          </div>
-          <h3>
-            {tab === 'requested' ? 'No pending requests' :
-             tab === 'assigned' ? 'No active deliveries' :
-             'No completed deliveries'}
-          </h3>
-          <p>
-            {tab === 'requested' ? 'New food requests will appear here' :
-             tab === 'assigned' ? 'Accept a request to start delivering' :
-             'Completed deliveries will show up here'}
-          </p>
-        </div>
-      ) : (
-        <div className="food-grid">
-          {filteredFoods.map(food => (
-            <FoodCard
-              key={food.id}
-              food={food}
-              actions={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'space-between' }}>
-                  <span className="food-card-detail">
-                    <MapPin size={14} /> {food.location}
-                  </span>
 
-                  {tab === 'requested' && (
-                    <button
-                      className="btn btn-primary btn-sm"
-                      onClick={() => handleAccept(food)}
-                      disabled={processing === food.id}
-                    >
-                      {processing === food.id ? (
-                        <span className="spinner" />
-                      ) : (
-                        <><Truck size={14} /> Accept Delivery</>
-                      )}
-                    </button>
-                  )}
-
-                  {tab === 'assigned' && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => setShowTracking(food)}
-                      >
-                        <Navigation size={14} /> Track
-                      </button>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => handleDeliver(food)}
-                        disabled={processing === food.id}
-                      >
-                        {processing === food.id ? (
-                          <span className="spinner" />
-                        ) : (
-                          <><CheckCircle size={14} /> Mark Delivered</>
-                        )}
-                      </button>
-                    </div>
-                  )}
-
-                  {tab === 'delivered' && (
-                    <span className="badge badge-delivered">
-                      <Check size={12} /> Delivered
-                    </span>
-                  )}
-                </div>
-              }
-            />
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 36, background: 'var(--canvas-warm)', padding: 4, borderRadius: 'var(--radius-pill)', width: 'fit-content' }}>
+          {tabItems.map(t => (
+            <button key={t.id} className={`tab-btn ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+              {t.label}
+              {t.count > 0 && (
+                <span style={{ marginLeft: 6, background: tab === t.id ? 'var(--accent)' : 'var(--border-strong)', color: tab === t.id ? 'white' : 'var(--ink-muted)', fontSize: '0.7rem', fontWeight: 700, padding: '1px 7px', borderRadius: 'var(--radius-pill)' }}>
+                  {t.count}
+                </span>
+              )}
+            </button>
           ))}
         </div>
-      )}
 
-      {/* Tracking Modal */}
-      <Modal
-        isOpen={!!showTracking}
-        onClose={() => setShowTracking(null)}
-        title="Live Tracking"
-        footer={
-          <button className="btn btn-primary" onClick={() => {
-            if (showTracking) handleDeliver(showTracking);
-            setShowTracking(null);
-          }}>
-            <CheckCircle size={16} /> Mark as Delivered
-          </button>
-        }
-      >
-        {showTracking && (
-          <div>
-            {/* Simulated Map */}
-            <div className="map-placeholder" style={{ marginBottom: '24px' }}>
-              <div className="map-grid" />
-              <div className="map-dot moving" style={{ top: '40%', left: '30%' }} />
-              <div className="map-dot destination" style={{ top: '60%', left: '70%' }} />
-              <div className="map-line" style={{ top: '50%', left: '30%', width: '40%', transform: 'rotate(25deg)' }} />
-              <div style={{ position: 'absolute', bottom: 12, fontSize: '0.78rem', color: 'var(--slate-500)', background: 'white', padding: '4px 12px', borderRadius: 'var(--radius-md)' }}>
-                🟢 Volunteer → 🟠 Destination
-              </div>
-            </div>
-
-            {/* Timeline */}
-            <div className="tracking-timeline">
-              <div className="tracking-step completed">
-                <div className="tracking-step-dot"><Check size={16} /></div>
-                <div className="tracking-step-info">
-                  <h4>Food Picked Up</h4>
-                  <p>Collected from {showTracking.donorName}</p>
+        {loading ? (
+          <div className="food-grid"><SkeletonCard count={4} /></div>
+        ) : filtered.length === 0 ? (
+          <div className="empty">
+            <div className="empty-icon">{tab === 'available' ? '📋' : tab === 'mine' ? '🚴' : '✅'}</div>
+            <h3>{tab === 'available' ? 'No pending deliveries' : tab === 'mine' ? 'No active deliveries' : 'No completed deliveries yet'}</h3>
+            <p>{tab === 'available' ? 'Check back soon — food requests appear here when donors list items.' : tab === 'mine' ? 'Accept a delivery from the "Needs delivery" tab.' : 'Deliveries you complete will appear here.'}</p>
+          </div>
+        ) : (
+          <div className="food-grid">
+            {filtered.map(food => (
+              <FoodCard key={food.id} food={food} actions={
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
+                  <span className="food-card-detail" style={{ fontSize: '0.8rem' }}>
+                    <MapPin size={12} /> {food.location}
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {tab === 'available' && (
+                      <button className="btn btn-primary btn-sm" onClick={() => accept(food)} disabled={processing === food.id}>
+                        {processing === food.id ? <span className="spinner" /> : <><Truck size={13} /> Accept</>}
+                      </button>
+                    )}
+                    {tab === 'mine' && (
+                      <>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setTracking(food)}>
+                          <Navigation size={13} /> Track
+                        </button>
+                        <button className="btn btn-primary btn-sm" onClick={() => complete(food)} disabled={processing === food.id}>
+                          {processing === food.id ? <span className="spinner" /> : <><CheckCircle size={13} /> Done</>}
+                        </button>
+                      </>
+                    )}
+                    {tab === 'done' && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--green)', fontSize: '0.82rem', fontWeight: 600 }}>
+                        <CheckCircle size={14} /> Delivered
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="tracking-step active">
-                <div className="tracking-step-dot"><Truck size={16} /></div>
-                <div className="tracking-step-info">
-                  <h4>In Transit</h4>
-                  <p>On the way to delivery location</p>
-                </div>
-              </div>
-              <div className="tracking-step">
-                <div className="tracking-step-dot"><Package size={16} /></div>
-                <div className="tracking-step-info">
-                  <h4>Delivered</h4>
-                  <p>Food delivered to receiver</p>
-                </div>
-              </div>
-            </div>
+              } />
+            ))}
           </div>
         )}
-      </Modal>
+      </div>
+
+      {/* Tracking Modal */}
+      {tracking && (
+        <div onClick={() => setTracking(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 480, width: '100%', padding: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h2 className="display-sm">Delivery details</h2>
+              <button className="icon-btn" onClick={() => setTracking(null)}><X size={16} /></button>
+            </div>
+
+            {/* Map placeholder */}
+            <div className="map-box" style={{ marginBottom: 24 }}>
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, #e0d6c8 1px, transparent 1px)', backgroundSize: '24px 24px', opacity: 0.5 }} />
+              <div className="map-dot origin" style={{ top: '42%', left: '25%' }} />
+              <div className="map-dot dest" style={{ top: '55%', left: '72%' }} />
+              <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                <line x1="25%" y1="42%" x2="72%" y2="55%" stroke="var(--accent)" strokeWidth="2" strokeDasharray="6,4" />
+              </svg>
+              <div style={{ position: 'absolute', bottom: 12, left: 12, background: 'white', padding: '4px 10px', borderRadius: 'var(--radius-pill)', fontSize: '0.72rem', color: 'var(--ink-muted)', boxShadow: 'var(--shadow-sm)' }}>
+                ● Pickup → ● Delivery
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Package size={16} color="var(--accent)" />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--ink-muted)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pick up from</div>
+                  <div style={{ fontWeight: 600 }}>{tracking.donorName}</div>
+                  <div className="body-sm">{tracking.location}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--green-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Navigation size={16} color="var(--green)" />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--ink-muted)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Deliver to</div>
+                  <div style={{ fontWeight: 600 }}>Receiver</div>
+                  <div className="body-sm">Contact them to coordinate</div>
+                </div>
+              </div>
+            </div>
+
+            <button className="btn btn-primary" onClick={() => complete(tracking)} disabled={processing === tracking.id} style={{ width: '100%', justifyContent: 'center' }}>
+              {processing === tracking.id ? <span className="spinner" /> : <><CheckCircle size={16} /> Mark as delivered</>}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

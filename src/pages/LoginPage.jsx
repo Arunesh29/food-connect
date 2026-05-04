@@ -1,257 +1,215 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Heart, HandHeart, Truck, ArrowRight, Leaf, Lock } from 'lucide-react';
+import { Heart, ShoppingBag, Bike, ArrowRight, Chrome } from 'lucide-react';
 
 export default function LoginPage({ selectionOnly }) {
-  const { user, loginWithGoogle, setUserRole, addToast, loginWithEmail, registerWithEmail } = useApp();
+  const { user, loginWithGoogle, setUserRole, loginWithEmail, registerWithEmail, addToast } = useApp();
   const navigate = useNavigate();
-  
-  // If selectionOnly is true, we skip sign-in and start at role step
-  const [step, setStep] = useState(selectionOnly ? 'role' : 'login'); 
-  const [isRegister, setIsRegister] = useState(false);
-  const [googleUser, setGoogleUser] = useState(selectionOnly ? user : null);
-  const [signingIn, setSigningIn] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '', name: '' });
 
-  async function handleGoogleSignIn() {
-    setSigningIn(true);
+  const [mode, setMode] = useState('google'); // 'google' | 'email' | 'register' | 'role'
+  const [loading, setLoading] = useState(false);
+  const [pendingUser, setPendingUser] = useState(selectionOnly ? user : null);
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+
+  // If selectionOnly (user logged in, no role) go straight to role pick
+  if (selectionOnly && !pendingUser && user) {
+    setPendingUser(user);
+  }
+
+  async function handleGoogle() {
+    setLoading(true);
     try {
-      const gUser = await loginWithGoogle();
-      setGoogleUser(gUser);
-      setStep('role');
-      addToast('success', 'Signed In!', `Welcome, ${gUser.name}`);
-    } catch (error) {
-      console.error('Login Error:', error);
-      if (error.code === 'auth/unauthorized-domain') {
-        addToast('error', 'Security Block', 'Domain not authorized in Firebase Console. Adding soon...');
-      } else {
-        addToast('error', 'Sign-in Failed', error.message || 'Could not sign in with Google');
-      }
+      const u = await loginWithGoogle();
+      setPendingUser(u);
+      setMode('role');
+    } catch {
+      addToast('error', 'Sign-in failed', 'Could not sign in with Google.');
     }
-    setSigningIn(false);
+    setLoading(false);
   }
 
   async function handleEmailAuth(e) {
     e.preventDefault();
-    setSigningIn(true);
+    setLoading(true);
     try {
-      let userData;
-      if (isRegister) {
-        if (!formData.name) throw new Error('Please enter your name');
-        userData = await registerWithEmail(formData.email, formData.password, formData.name);
-        addToast('success', 'Account Created!', 'Please now pick your role.');
+      let u;
+      if (mode === 'register') {
+        if (!form.name.trim()) throw new Error('Name is required');
+        u = await registerWithEmail(form.email, form.password, form.name);
       } else {
-        userData = await loginWithEmail(formData.email, formData.password);
-        addToast('success', 'Welcome Back!', `Logged in as ${userData.name}`);
+        u = await loginWithEmail(form.email, form.password);
       }
-
-      setGoogleUser(userData);
-      
-      if (userData.role) {
-        // If they already have a role (and it's a login), go straight to it
-        navigate(`/${userData.role}`);
-      } else {
-        setStep('role');
-      }
+      if (u.role) navigate(`/${u.role}`);
+      else { setPendingUser(u); setMode('role'); }
     } catch (err) {
-      addToast('error', 'Auth Failed', err.message);
+      addToast('error', 'Authentication failed', err.message);
     }
-    setSigningIn(false);
+    setLoading(false);
   }
 
   async function handleRoleSelect(role) {
-    if (!googleUser) return;
-    await setUserRole(googleUser, role);
-    const routes = { donor: '/donor', receiver: '/receiver', volunteer: '/volunteer' };
-    navigate(routes[role]);
+    setLoading(true);
+    try {
+      await setUserRole(pendingUser, role);
+      navigate(`/${role}`);
+    } catch {
+      addToast('error', 'Something went wrong', 'Could not set your role.');
+    }
+    setLoading(false);
   }
 
-  return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-header">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
-            {googleUser?.photoURL ? (
-              <img
-                src={googleUser.photoURL}
-                alt={googleUser.name}
-                style={{
-                  width: 56, height: 56, borderRadius: '50%',
-                  border: '3px solid var(--green-400)',
-                  boxShadow: 'var(--shadow-green)'
-                }}
-              />
-            ) : (
-              <div className="navbar-brand-icon" style={{ width: 48, height: 48 }}>
-                <Leaf size={24} />
-              </div>
-            )}
-          </div>
+  const roles = [
+    { id: 'donor', label: 'Donor', icon: <Heart size={22} />, desc: 'I have food to share' },
+    { id: 'receiver', label: 'Receiver', icon: <ShoppingBag size={22} />, desc: 'I need food' },
+    { id: 'volunteer', label: 'Volunteer', icon: <Bike size={22} />, desc: 'I want to deliver' },
+  ];
 
-          {(step === 'login' || step === 'email') && (
+  return (
+    <div className="auth-wrap">
+      {/* Visual side */}
+      <div className="auth-visual">
+        <img
+          src="https://images.unsplash.com/photo-1593113598332-cd288d649433?w=900&q=85"
+          alt="Community sharing food"
+        />
+        <div className="auth-visual-caption">
+          <h2 className="display-md" style={{ color: 'white', marginBottom: 12 }}>
+            Every meal shared<br />is waste prevented.
+          </h2>
+          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.95rem' }}>
+            Join our community of 150+ donors, volunteers, and receivers making a daily difference.
+          </p>
+        </div>
+      </div>
+
+      {/* Form side */}
+      <div className="auth-panel">
+        <div className="auth-form">
+          <Link to="/" className="navbar-logo" style={{ display: 'inline-flex', marginBottom: 40 }}>
+            <div className="navbar-logo-mark" style={{ width: 28, height: 28 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{ width: 14 }}>
+                <path d="M12 2C8 6 4 8 4 14a8 8 0 0016 0c0-6-4-8-8-12z"/>
+              </svg>
+            </div>
+            Food Connect
+          </Link>
+
+          {/* ── Role Selection ── */}
+          {(mode === 'role' || selectionOnly) && (
             <>
-              <h2>Welcome to Food Connect</h2>
-              <p>Join the movement to reduce food waste</p>
+              <h1 className="display-md" style={{ marginBottom: 8 }}>
+                {pendingUser?.name ? `Hi, ${pendingUser.name.split(' ')[0]}!` : 'Welcome!'}
+              </h1>
+              <p className="body-sm" style={{ marginBottom: 36 }}>What brings you here today?</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {roles.map(role => (
+                  <button
+                    key={role.id}
+                    className="card"
+                    onClick={() => handleRoleSelect(role.id)}
+                    disabled={loading}
+                    style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 18, textAlign: 'left', width: '100%', cursor: 'pointer', border: '1.5px solid var(--border)' }}
+                  >
+                    <div className={`role-icon ${role.id}`} style={{ margin: 0 }}>{role.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600 }}>{role.label}</div>
+                      <div className="body-sm">{role.desc}</div>
+                    </div>
+                    <ArrowRight size={18} color="var(--ink-faint)" />
+                  </button>
+                ))}
+              </div>
             </>
           )}
 
-          {step === 'role' && (
+          {/* ── Google / Email start ── */}
+          {mode === 'google' && (
             <>
-              <h2>Choose Your Role</h2>
-              <p>Hi <strong>{googleUser?.name || 'there'}</strong>! How would you like to participate?</p>
+              <h1 className="display-md" style={{ marginBottom: 8 }}>Sign in</h1>
+              <p className="body-sm" style={{ marginBottom: 36 }}>Join thousands helping their community.</p>
+
+              <button className="btn btn-secondary" onClick={handleGoogle} disabled={loading} style={{ width: '100%', justifyContent: 'center', gap: 12, marginBottom: 20 }}>
+                {loading ? <span className="spinner" /> : (
+                  <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.6 0 6.5 1.2 8.9 3.2l6.6-6.6C35.3 2.7 29.9 0 24 0 14.7 0 6.7 5.4 2.8 13.3l7.7 6C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.7-.2-3.3-.5-4.9H24v9.4h12.4c-.6 2.9-2.3 5.3-4.7 7l7.4 5.7c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.7-6A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6z"/><path fill="#34A853" d="M24 48c6.1 0 11.2-2 14.9-5.5l-7.4-5.7c-2 1.4-4.6 2.2-7.5 2.2-6.3 0-11.7-4.1-13.6-9.8l-7.9 6C6.7 42.6 14.7 48 24 48z"/></svg>
+                )}
+                Continue with Google
+              </button>
+
+              <div className="divider-text">
+                <span>or</span>
+              </div>
+
+              <button className="btn btn-primary" onClick={() => setMode('email')} style={{ width: '100%', justifyContent: 'center', marginBottom: 16 }}>
+                Continue with email
+              </button>
+              <button className="btn btn-ghost" onClick={() => setMode('register')} style={{ width: '100%', justifyContent: 'center' }}>
+                Create account
+              </button>
+            </>
+          )}
+
+          {/* ── Email form ── */}
+          {(mode === 'email' || mode === 'register') && (
+            <>
+              <h1 className="display-md" style={{ marginBottom: 8 }}>
+                {mode === 'register' ? 'Create account' : 'Welcome back'}
+              </h1>
+              <p className="body-sm" style={{ marginBottom: 36 }}>
+                {mode === 'register' ? 'Join the community today.' : 'Sign in to your account.'}
+              </p>
+
+              <form onSubmit={handleEmailAuth}>
+                {mode === 'register' && (
+                  <div className="field">
+                    <label className="field-label">Full name</label>
+                    <input
+                      type="text" className="field-input"
+                      placeholder="Your name"
+                      value={form.name}
+                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                      required
+                    />
+                  </div>
+                )}
+                <div className="field">
+                  <label className="field-label">Email address</label>
+                  <input
+                    type="email" className="field-input"
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label className="field-label">Password</label>
+                  <input
+                    type="password" className="field-input"
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                    required minLength={6}
+                  />
+                </div>
+
+                <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginBottom: 16 }}>
+                  {loading ? <span className="spinner" /> : mode === 'register' ? 'Create account' : 'Sign in'}
+                </button>
+              </form>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <button className="btn btn-ghost" onClick={() => setMode('google')} style={{ fontSize: '0.8rem' }}>
+                  ← Back
+                </button>
+                <button className="btn btn-ghost" onClick={() => setMode(mode === 'email' ? 'register' : 'email')} style={{ fontSize: '0.8rem' }}>
+                  {mode === 'email' ? 'Need an account?' : 'Already have account?'}
+                </button>
+              </div>
             </>
           )}
         </div>
-
-        {step === 'login' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <button
-              className="btn btn-lg"
-              onClick={handleGoogleSignIn}
-              disabled={signingIn}
-              style={{
-                width: '100%', background: 'white',
-                border: '2px solid var(--slate-200)',
-                color: 'var(--slate-700)',
-                gap: '12px', fontWeight: 600
-              }}
-            >
-              {signingIn ? <span className="spinner" /> : (
-                <svg width="20" height="20" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-              )}
-              Continue with Google
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0' }}>
-              <div style={{ flex: 1, height: '1px', background: 'var(--slate-100)' }} />
-              <span style={{ fontSize: '0.75rem', color: 'var(--slate-400)', fontWeight: 600 }}>OR</span>
-              <div style={{ flex: 1, height: '1px', background: 'var(--slate-100)' }} />
-            </div>
-
-            <button
-              className="btn btn-lg btn-outline"
-              onClick={() => setStep('email')}
-              style={{ width: '100%', gap: '10px' }}
-            >
-              Sign in with Email
-            </button>
-          </div>
-        )}
-
-        {step === 'email' && (
-          <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {isRegister && (
-              <div className="form-group">
-                <label>Full Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Your Name"
-                  required
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-            )}
-            <div className="form-group">
-              <label>Email Address</label>
-              <input
-                type="email"
-                className="form-control"
-                placeholder="email@example.com"
-                required
-                value={formData.email}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>Password</label>
-              <input
-                type="password"
-                className="form-control"
-                placeholder="Min. 6 characters"
-                required
-                minLength={6}
-                value={formData.password}
-                onChange={e => setFormData({ ...formData, password: e.target.value })}
-              />
-            </div>
-
-            <button type="submit" className="btn btn-lg btn-primary" disabled={signingIn} style={{ width: '100%' }}>
-              {signingIn ? <span className="spinner" /> : (isRegister ? 'Create Account' : 'Sign In')}
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setIsRegister(!isRegister)}
-              style={{ fontSize: '0.85rem' }}
-            >
-              {isRegister ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setStep('login')}
-              style={{ fontSize: '0.8rem', color: 'var(--slate-400)' }}
-            >
-              ← Back to Google Sign-in
-            </button>
-          </form>
-        )}
-
-        {step === 'role' && (
-          <div className="login-roles">
-            <button className="login-role-btn donor" onClick={() => handleRoleSelect('donor')}>
-              <div className="login-role-icon"><Heart size={22} /></div>
-              <div className="login-role-info">
-                <h3>Food Donor</h3>
-                <p>Post surplus food for those in need</p>
-              </div>
-              <ArrowRight size={16} style={{ marginLeft: 'auto', color: 'var(--slate-400)' }} />
-            </button>
-
-            <button className="login-role-btn receiver" onClick={() => handleRoleSelect('receiver')}>
-              <div className="login-role-icon"><HandHeart size={22} /></div>
-              <div className="login-role-info">
-                <h3>Food Receiver</h3>
-                <p>Find and request available food</p>
-              </div>
-              <ArrowRight size={16} style={{ marginLeft: 'auto', color: 'var(--slate-400)' }} />
-            </button>
-
-            <button className="login-role-btn volunteer" onClick={() => handleRoleSelect('volunteer')}>
-              <div className="login-role-icon"><Truck size={22} /></div>
-              <div className="login-role-info">
-                <h3>Volunteer</h3>
-                <p>Pick up and deliver food donations</p>
-              </div>
-              <ArrowRight size={16} style={{ marginLeft: 'auto', color: 'var(--slate-400)' }} />
-            </button>
-          </div>
-        )}
-
-        {step !== 'role' && (
-          <div style={{ textAlign: 'center', paddingTop: '16px', borderTop: '1px solid var(--slate-100)', marginTop: '20px' }}>
-            <p style={{ fontSize: '0.78rem', color: 'var(--slate-400)', marginBottom: '4px' }}>
-              Are you an administrator?
-            </p>
-            <a
-              href="/admin-login"
-              onClick={(e) => { e.preventDefault(); navigate('/admin-login'); }}
-              style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--slate-500)' }}
-            >
-              <Lock size={12} /> Secure Admin Access
-            </a>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,306 +1,318 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { useFoods, addFood, uploadImage, deleteFood } from '../services/foodService';
+import { useFoods, addFood, deleteFood } from '../services/foodService';
 import FoodCard from '../components/FoodCard';
 import SkeletonCard from '../components/SkeletonCard';
-import { Plus, Upload, Clock, Zap, Image as ImageIcon, X, Leaf, Utensils, Box, Apple, Trash } from 'lucide-react';
+import { Plus, Upload, X, Trash2, ImageIcon } from 'lucide-react';
+
+const CATEGORIES = ['veg', 'non-veg', 'packed', 'fresh'];
+
+// Compress image to base64 — works without Firebase Storage
+function compressToBase64(file, maxWidth = 800, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
 export default function DonorPage() {
   const { user, addToast, addNotification } = useApp();
-  const filter = useMemo(() => {
-    return (f) => user?.role === 'admin' ? true : f.donorId === user?.uid;
-  }, [user?.uid, user?.role]);
+  const myFilter = useMemo(() => (f) => user?.role === 'admin' ? true : f.donorId === user?.uid, [user?.uid, user?.role]);
+  const { foods, loading } = useFoods(myFilter);
 
-  const { foods, loading } = useFoods(filter);
-  const [submitting, setSubmitting] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [imgFile, setImgFile] = useState(null);
+  const [imgPreview, setImgPreview] = useState('');
+  const [uploadStatus, setUploadStatus] = useState(''); // 'uploading' | 'done' | 'local'
+  const fileRef = useRef();
 
-  const [form, setForm] = useState({
-    name: '',
-    quantity: '',
-    category: 'veg',
-    location: '',
-    expiryHours: '2',
-    pickupOption: 'ready'
-  });
+  const [form, setForm] = useState({ name: '', quantity: '', category: 'veg', location: '', expiryHours: '4' });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  function updateForm(key, value) {
-    setForm(prev => ({ ...prev, [key]: value }));
-  }
+  async function onFile(e) {
+    const f = e.target.files[0];
+    if (!f) return;
 
-  function handleImageChange(e) {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+    // Validate size (max 15MB raw)
+    if (f.size > 15 * 1024 * 1024) {
+      addToast('error', 'File too large', 'Please choose an image under 15MB.');
+      return;
     }
+
+    setImgFile(f);
+    setUploadStatus('uploading');
+
+    // Show preview immediately using local URL
+    const localUrl = URL.createObjectURL(f);
+    setImgPreview(localUrl);
+    setUploadStatus('done');
   }
 
   function removeImage() {
-    setImagePreview(null);
-    setImageFile(null);
+    setImgPreview('');
+    setImgFile(null);
+    setUploadStatus('');
+    if (fileRef.current) fileRef.current.value = '';
+  }
+
+  function resetForm() {
+    setForm({ name: '', quantity: '', category: 'veg', location: '', expiryHours: '4' });
+    removeImage();
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-
-    if (!form.name || !form.quantity || !form.location) {
-      addToast('error', 'Missing Fields', 'Please fill in all required fields');
+    if (!form.name.trim() || !form.quantity.trim() || !form.location.trim()) {
+      addToast('error', 'Missing fields', 'Please fill in name, quantity, and location.');
       return;
     }
 
-    setSubmitting(true);
+    setSaving(true);
+    let imageUrl = '';
 
-    try {
-      let imageUrl = '';
-      if (imageFile) {
-        try {
-          imageUrl = await uploadImage(imageFile);
-        } catch (storageErr) {
-          console.warn('Storage failed/blocked. Falling back to default category image.', storageErr);
-          // imageUrl remains empty, addFood will handle the fallback
-        }
+    // Skip Firebase Storage (it hangs) — use base64 directly, it's instant and reliable
+    if (imgFile) {
+      try {
+        imageUrl = await compressToBase64(imgFile);
+      } catch {
+        addToast('info', 'Photo skipped', 'Could not process the photo, but your listing will still post.');
       }
-
-      const expiryTime = new Date(Date.now() + parseInt(form.expiryHours) * 60 * 60 * 1000).toISOString();
-
-      await addFood({
-        name: form.name,
-        quantity: form.quantity,
-        category: form.category,
-        location: form.location,
-        imageUrl,
-        expiryTime,
-        pickupOption: form.pickupOption,
-        donorId: user.uid,
-        donorName: user.name
-      });
-
-      addToast('success', 'Food Posted!', `${form.name} is now listed for pickup`);
-      addNotification('Food Posted', `You listed "${form.name}" — ${form.quantity}`);
-
-      setForm({ name: '', quantity: '', category: 'veg', location: '', expiryHours: '2', pickupOption: 'ready' });
-      setImagePreview(null);
-      setImageFile(null);
-    } catch (err) {
-      addToast('error', 'Posting Failed', err.message || 'Check your internet or image size.');
-      console.error('Firestore/Storage Error:', err);
     }
 
-    setSubmitting(false);
+    try {
+      const expiryTime = new Date(Date.now() + parseInt(form.expiryHours) * 3600000).toISOString();
+      await addFood({
+        ...form,
+        name: form.name.trim(),
+        quantity: form.quantity.trim(),
+        location: form.location.trim(),
+        imageUrl,
+        expiryTime,
+        donorId: user.uid,
+        donorName: user.name,
+      });
+
+      addToast('success', 'Listing posted!', `"${form.name}" is now live.`);
+      addNotification('New listing', `You listed "${form.name}".`);
+      resetForm();
+    } catch (err) {
+      console.error('addFood error:', err);
+      addToast('error', 'Post failed', 'Could not save your listing. Please try again.');
+    }
+
+    setSaving(false);
   }
 
+  const available = foods.filter(f => f.status === 'available');
+  const others = foods.filter(f => f.status !== 'available');
+
   return (
-    <div className="container page-content">
-      <div className="page-header">
-        <h1 className="page-title">🎁 Donor Dashboard</h1>
-        <p className="page-subtitle">Post surplus food and track your donations</p>
-      </div>
-
-      <div className="donor-page">
-        {/* Form */}
-        <div className="donor-form-card animate-fade-in">
-          <h3 className="donor-form-title">
-            <Plus size={20} /> Post New Food
-          </h3>
-
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">Food Name *</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. Fresh Vegetable Platter"
-                value={form.name}
-                onChange={(e) => updateForm('name', e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Quantity *</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. 10 servings, 5 boxes"
-                value={form.quantity}
-                onChange={(e) => updateForm('quantity', e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Category</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                {[
-                  { value: 'veg', label: 'Veg', icon: <Leaf size={14} />, color: 'var(--green-600)' },
-                  { value: 'non-veg', label: 'Non-Veg', icon: <Utensils size={14} />, color: 'var(--error)' },
-                  { value: 'packed', label: 'Packed', icon: <Box size={14} />, color: '#6366f1' },
-                  { value: 'fresh', label: 'Fresh', icon: <Apple size={14} />, color: '#0891b2' }
-                ].map(cat => (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    className={`filter-chip ${form.category === cat.value ? 'active' : ''}`}
-                    onClick={() => updateForm('category', cat.value)}
-                    style={form.category === cat.value ? { background: cat.color, borderColor: cat.color } : {}}
-                  >
-                    {cat.icon} {cat.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Location *</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. 123 Main St, Downtown"
-                value={form.location}
-                onChange={(e) => updateForm('location', e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Upload Photo</label>
-              {imagePreview ? (
-                <div className="image-preview">
-                  <img src={imagePreview} alt="Preview" />
-                  <button type="button" className="image-preview-remove" onClick={removeImage}>
-                    <X size={12} />
-                  </button>
-                </div>
-              ) : (
-                <div className="form-file-wrapper">
-                  <input type="file" accept="image/*" onChange={handleImageChange} />
-                  <div className="form-file-icon"><Upload size={28} /></div>
-                  <p className="form-file-text">
-                    <strong>Click to upload</strong> or drag and drop
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Expiry Time</label>
-              <select
-                className="form-select"
-                value={form.expiryHours}
-                onChange={(e) => updateForm('expiryHours', e.target.value)}
-              >
-                <option value="1">1 hour</option>
-                <option value="2">2 hours</option>
-                <option value="4">4 hours</option>
-                <option value="6">6 hours</option>
-                <option value="12">12 hours</option>
-                <option value="24">24 hours</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Pickup Option</label>
-              <div className="form-radio-group">
-                <div className="form-radio-option">
-                  <input
-                    type="radio"
-                    id="ready-now"
-                    name="pickup"
-                    checked={form.pickupOption === 'ready'}
-                    onChange={() => updateForm('pickupOption', 'ready')}
-                  />
-                  <label htmlFor="ready-now" className="form-radio-label">
-                    <Zap size={14} /> Ready Now
-                  </label>
-                </div>
-                <div className="form-radio-option">
-                  <input
-                    type="radio"
-                    id="pickup-30"
-                    name="pickup"
-                    checked={form.pickupOption === '30min'}
-                    onChange={() => updateForm('pickupOption', '30min')}
-                  />
-                  <label htmlFor="pickup-30" className="form-radio-label">
-                    <Clock size={14} /> After 30 min
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg"
-              style={{ width: '100%', marginTop: '8px' }}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <><span className="spinner" /> Posting...</>
-              ) : (
-                <><Plus size={18} /> Post Food</>
-              )}
-            </button>
-          </form>
+    <div className="page-shell">
+      <div className="wrap section">
+        {/* Header */}
+        <div style={{ marginBottom: 48 }}>
+          <span className="label-caps" style={{ marginBottom: 10, display: 'block' }}>Donor Dashboard</span>
+          <h1 className="display-lg">Your listings</h1>
+          <p className="body-lg" style={{ marginTop: 10 }}>
+            Share surplus food and track requests from your community.
+          </p>
         </div>
 
-        {/* My Listings */}
-        <div className="donor-listings">
-          <div className="donor-listings-header">
-            <h3 className="donor-listings-title">My Listings</h3>
-            <span className="donor-listings-count">{foods.length} items</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 48, alignItems: 'start' }}>
+          {/* ── Post Form ── */}
+          <div style={{ position: 'sticky', top: 100 }}>
+            <div className="card">
+              <div style={{ padding: '24px 24px 0' }}>
+                <h2 className="display-sm" style={{ marginBottom: 4 }}>Post a listing</h2>
+                <p className="body-sm">Takes about 60 seconds.</p>
+              </div>
+              <div className="divider" style={{ margin: '20px 0' }} />
+
+              <form onSubmit={handleSubmit} style={{ padding: '0 24px 24px' }}>
+
+                {/* ── Image Upload ── */}
+                {imgPreview ? (
+                  <div style={{ position: 'relative', marginBottom: 20, borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                    <img
+                      src={imgPreview}
+                      alt="Preview"
+                      style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
+                    />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%)' }} />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      style={{
+                        position: 'absolute', top: 10, right: 10,
+                        width: 30, height: 30, borderRadius: '50%',
+                        background: 'white', border: 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', boxShadow: 'var(--shadow-md)',
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                    <div style={{ position: 'absolute', bottom: 10, left: 12, color: 'white', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <ImageIcon size={12} /> Photo attached
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    style={{
+                      display: 'block', marginBottom: 20,
+                      border: '2px dashed var(--border-strong)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '36px 20px', textAlign: 'center',
+                      cursor: 'pointer', transition: 'var(--transition)',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ink)'; e.currentTarget.style.background = 'var(--canvas-warm)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={onFile}
+                      style={{ display: 'none' }}
+                    />
+                    <Upload size={22} color="var(--ink-faint)" style={{ margin: '0 auto 10px' }} />
+                    <p className="body-sm" style={{ marginBottom: 4 }}>
+                      <strong style={{ color: 'var(--ink)' }}>Click to upload</strong> a photo
+                    </p>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--ink-faint)' }}>JPG, PNG, WEBP up to 15MB</p>
+                  </label>
+                )}
+
+                <div className="field">
+                  <label className="field-label">Food name *</label>
+                  <input
+                    type="text" className="field-input"
+                    placeholder="e.g. Dal, Biryani, Bread rolls"
+                    value={form.name}
+                    onChange={e => set('name', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="field">
+                  <label className="field-label">Quantity *</label>
+                  <input
+                    type="text" className="field-input"
+                    placeholder="e.g. 5 boxes, feeds 10 people"
+                    value={form.quantity}
+                    onChange={e => set('quantity', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="field">
+                  <label className="field-label">Category</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {CATEGORIES.map(c => (
+                      <button
+                        key={c} type="button"
+                        onClick={() => set('category', c)}
+                        className={`chip ${form.category === c ? 'active' : ''}`}
+                        style={{ textTransform: 'capitalize' }}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label className="field-label">Pickup location *</label>
+                  <input
+                    type="text" className="field-input"
+                    placeholder="Full address or landmark"
+                    value={form.location}
+                    onChange={e => set('location', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="field">
+                  <label className="field-label">Available for</label>
+                  <select className="field-input" value={form.expiryHours} onChange={e => set('expiryHours', e.target.value)}>
+                    {[['1','1 hour'], ['2','2 hours'], ['4','4 hours'], ['8','8 hours'], ['12','12 hours'], ['24','24 hours']].map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={saving}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  {saving ? <><span className="spinner" /> Posting…</> : <><Plus size={16} /> Post listing</>}
+                </button>
+              </form>
+            </div>
           </div>
 
-          {loading ? (
-            <div className="food-grid">
-              <SkeletonCard count={2} />
-            </div>
-          ) : foods.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">🍽️</div>
-              <h3>No food posted yet</h3>
-              <p>Use the form to share your surplus food with those who need it</p>
-            </div>
-          ) : (
-            <div className="food-grid">
-              {foods.map(food => (
-                <FoodCard
-                  key={food.id}
-                  food={food}
-                  showRequests
-                  actions={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className={`badge badge-${food.status}`}>{food.status}</span>
-                        {food.requestedUsers?.length > 0 && (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--orange-600)', fontWeight: 600 }}>
-                            {food.requestedUsers.length} request(s)
-                          </span>
-                        )}
-                      </div>
-                      {food.status === 'available' && (
-                        <button 
-                          className="btn btn-ghost btn-sm" 
-                          style={{ color: 'var(--error)', padding: '4px' }}
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`Are you sure you want to cancel listing "${food.name}"?`)) {
-                              try {
-                                await deleteFood(food.id);
-                                addToast('success', 'Listing Cancelled', 'Food item has been removed.');
-                              } catch (err) {
-                                addToast('error', 'Failed to Cancel', 'You do not have permission to delete this.');
-                              }
-                            }
-                          }}
-                        >
-                          <Trash size={16} />
-                        </button>
-                      )}
+          {/* ── Listings ── */}
+          <div>
+            {loading ? (
+              <div className="food-grid"><SkeletonCard count={4} /></div>
+            ) : foods.length === 0 ? (
+              <div className="empty">
+                <div className="empty-icon">🥡</div>
+                <h3>No listings yet</h3>
+                <p>Post your first food listing using the form. It only takes a minute.</p>
+              </div>
+            ) : (
+              <>
+                {available.length > 0 && (
+                  <div style={{ marginBottom: 40 }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', marginBottom: 20, color: 'var(--ink-muted)' }}>
+                      Active ({available.length})
+                    </h3>
+                    <div className="food-grid">
+                      {available.map(food => (
+                        <FoodCard key={food.id} food={food} actions={
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            <span className="body-sm">{food.requestedUsers?.length || 0} request(s)</span>
+                            <button
+                              onClick={() => deleteFood(food.id)}
+                              className="btn btn-ghost btn-sm"
+                              style={{ color: 'var(--accent)', padding: '6px 10px' }}
+                              title="Remove listing"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        } />
+                      ))}
                     </div>
-                  }
-                />
-              ))}
-            </div>
-          )}
+                  </div>
+                )}
+                {others.length > 0 && (
+                  <div>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', marginBottom: 20, color: 'var(--ink-muted)' }}>
+                      Past listings ({others.length})
+                    </h3>
+                    <div className="food-grid">
+                      {others.map(food => <FoodCard key={food.id} food={food} />)}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,238 +1,125 @@
 import { useMemo } from 'react';
 import { useFoods } from '../services/foodService';
-import SkeletonCard from '../components/SkeletonCard';
-import { Package, Truck, Clock, TrendingDown, CheckCircle, AlertTriangle, BarChart3, Utensils } from 'lucide-react';
+import { Package, Truck, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+
+function StatCard({ icon, label, value, color }) {
+  return (
+    <div className="card" style={{ padding: '28px 24px', display: 'flex', alignItems: 'center', gap: 18 }}>
+      <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', lineHeight: 1 }}>{value}</div>
+        <div className="body-sm" style={{ marginTop: 4 }}>{label}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPage() {
   const { foods, loading } = useFoods();
 
-  const stats = useMemo(() => {
-    const total = foods.length;
-    const available = foods.filter(f => f.status === 'available').length;
-    const requested = foods.filter(f => f.status === 'requested').length;
-    const assigned = foods.filter(f => f.status === 'assigned').length;
-    const delivered = foods.filter(f => f.status === 'delivered').length;
-    const expired = foods.filter(f => f.status === 'expired').length;
-    const wasteReduced = delivered * 2.5; // kg estimate
+  const stats = useMemo(() => ({
+    total: foods.length,
+    available: foods.filter(f => f.status === 'available').length,
+    requested: foods.filter(f => f.status === 'requested').length,
+    assigned: foods.filter(f => f.status === 'assigned').length,
+    delivered: foods.filter(f => f.status === 'delivered').length,
+    expired: foods.filter(f => f.status === 'expired').length,
+  }), [foods]);
 
-    return { total, available, requested, assigned, delivered, expired, wasteReduced };
-  }, [foods]);
+  const recent = useMemo(() =>
+    [...foods].sort((a, b) => {
+      const ta = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+      const tb = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+      return tb - ta;
+    }).slice(0, 12)
+  , [foods]);
 
-  const recentFoods = useMemo(() => {
-    return [...foods].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 8);
-  }, [foods]);
-
-  if (loading) {
-    return (
-      <div className="container page-content">
-        <div className="page-header">
-          <h1 className="page-title">📊 Admin Dashboard</h1>
-        </div>
-        <div className="dashboard-grid">
-          {Array.from({ length: 4 }, (_, i) => (
-            <div key={i} className="skeleton" style={{ height: '140px', borderRadius: 'var(--radius-xl)' }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="page-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+      <span className="spinner" style={{ width: 32, height: 32 }} />
+    </div>
+  );
 
   return (
-    <div className="container page-content">
-      <div className="page-header">
-        <h1 className="page-title">📊 Admin Dashboard</h1>
-        <p className="page-subtitle">Platform analytics and overview</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="dashboard-grid">
-        <div className="dashboard-stat animate-fade-in-up" style={{ animationDelay: '0s' }}>
-          <div className="dashboard-stat-header">
-            <div>
-              <div className="dashboard-stat-value">{stats.total}</div>
-              <div className="dashboard-stat-label">Total Food Posted</div>
-            </div>
-            <div className="dashboard-stat-icon" style={{ background: 'var(--green-100)', color: 'var(--green-600)' }}>
-              <Package size={22} />
-            </div>
-          </div>
-          <div className="dashboard-stat-change positive">
-            <TrendingDown size={12} style={{ transform: 'rotate(180deg)' }} />
-            +12% this week
-          </div>
+    <div className="page-shell">
+      <div className="wrap section">
+        <div style={{ marginBottom: 48 }}>
+          <span className="label-caps" style={{ marginBottom: 10, display: 'block' }}>Admin Panel</span>
+          <h1 className="display-lg">Dashboard</h1>
+          <p className="body-lg" style={{ marginTop: 10 }}>Overview of all food listings across the platform.</p>
         </div>
 
-        <div className="dashboard-stat animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
-          <div className="dashboard-stat-header">
-            <div>
-              <div className="dashboard-stat-value">{stats.delivered}</div>
-              <div className="dashboard-stat-label">Deliveries Completed</div>
-            </div>
-            <div className="dashboard-stat-icon" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--info)' }}>
-              <Truck size={22} />
-            </div>
-          </div>
-          <div className="dashboard-stat-change positive">
-            <CheckCircle size={12} />
-            {stats.delivered > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0}% completion rate
-          </div>
+        {/* Stat cards */}
+        <div className="grid-4" style={{ marginBottom: 48 }}>
+          <StatCard icon={<Package size={22} />} label="Total listings" value={stats.total} color="var(--ink)" />
+          <StatCard icon={<Clock size={22} />} label="Available" value={stats.available} color="var(--green)" />
+          <StatCard icon={<Truck size={22} />} label="In transit" value={stats.assigned} color="var(--amber)" />
+          <StatCard icon={<CheckCircle size={22} />} label="Delivered" value={stats.delivered} color="var(--accent)" />
         </div>
 
-        <div className="dashboard-stat animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          <div className="dashboard-stat-header">
-            <div>
-              <div className="dashboard-stat-value">{stats.requested + stats.assigned}</div>
-              <div className="dashboard-stat-label">Active Requests</div>
-            </div>
-            <div className="dashboard-stat-icon" style={{ background: 'var(--orange-100)', color: 'var(--orange-600)' }}>
-              <Clock size={22} />
-            </div>
+        {/* Progress bar */}
+        <div className="card" style={{ padding: 28, marginBottom: 48 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Delivery success rate</h3>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem' }}>
+              {stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0}%
+            </span>
           </div>
-          <div className="dashboard-stat-change positive">
-            <Utensils size={12} />
-            {stats.requested} requested, {stats.assigned} in transit
+          <div style={{ height: 8, background: 'var(--canvas-warm)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${stats.total > 0 ? (stats.delivered / stats.total) * 100 : 0}%`, background: 'var(--green)', borderRadius: 8, transition: 'width 1s ease' }} />
           </div>
-        </div>
-
-        <div className="dashboard-stat animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
-          <div className="dashboard-stat-header">
-            <div>
-              <div className="dashboard-stat-value">{stats.wasteReduced.toFixed(1)} kg</div>
-              <div className="dashboard-stat-label">Waste Reduced</div>
-            </div>
-            <div className="dashboard-stat-icon" style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-              <TrendingDown size={22} />
-            </div>
-          </div>
-          <div className="dashboard-stat-change positive">
-            <BarChart3 size={12} />
-            ~{(stats.wasteReduced * 2.2).toFixed(0)} meals saved
-          </div>
-        </div>
-      </div>
-
-      {/* Status Breakdown */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
-        {/* Status Chart */}
-        <div className="card" style={{ padding: '28px' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '20px', color: 'var(--slate-800)' }}>
-            Status Breakdown
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: 24, marginTop: 12, flexWrap: 'wrap' }}>
             {[
-              { label: 'Available', count: stats.available, color: 'var(--green-500)', total: stats.total },
-              { label: 'Requested', count: stats.requested, color: 'var(--orange-500)', total: stats.total },
-              { label: 'Assigned', count: stats.assigned, color: 'var(--info)', total: stats.total },
-              { label: 'Delivered', count: stats.delivered, color: '#10b981', total: stats.total },
-              { label: 'Expired', count: stats.expired, color: 'var(--error)', total: stats.total }
-            ].map((item) => (
-              <div key={item.label}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--slate-600)' }}>{item.label}</span>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--slate-800)' }}>{item.count}</span>
-                </div>
-                <div className="progress-bar">
-                  <div
-                    className="progress-bar-fill"
-                    style={{
-                      width: `${item.total > 0 ? (item.count / item.total) * 100 : 0}%`,
-                      background: item.color,
-                      animation: 'progressFill 1s ease both'
-                    }}
-                  />
-                </div>
-              </div>
+              { label: 'Available', val: stats.available, color: 'var(--green)' },
+              { label: 'Requested', val: stats.requested, color: 'var(--amber)' },
+              { label: 'Assigned', val: stats.assigned, color: '#2a4a8f' },
+              { label: 'Expired', val: stats.expired, color: 'var(--accent)' },
+            ].map(s => (
+              <span key={s.label} className="body-sm" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'inline-block' }} />
+                {s.label}: <strong>{s.val}</strong>
+              </span>
             ))}
           </div>
         </div>
 
-        {/* Quick Alerts */}
-        <div className="card" style={{ padding: '28px' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '20px', color: 'var(--slate-800)' }}>
-            Platform Alerts
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {stats.expired > 0 && (
-              <div style={{ display: 'flex', gap: '12px', padding: '14px', background: 'rgba(239,68,68,0.05)', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(239,68,68,0.15)' }}>
-                <AlertTriangle size={18} style={{ color: 'var(--error)', flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--slate-800)' }}>
-                    {stats.expired} items expired
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--slate-500)' }}>
-                    These items have passed their expiry time
-                  </div>
-                </div>
-              </div>
-            )}
-            {stats.requested > 0 && (
-              <div style={{ display: 'flex', gap: '12px', padding: '14px', background: 'var(--orange-50)', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(249,115,22,0.15)' }}>
-                <Clock size={18} style={{ color: 'var(--orange-500)', flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--slate-800)' }}>
-                    {stats.requested} pending requests
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--slate-500)' }}>
-                    Awaiting volunteer acceptance
-                  </div>
-                </div>
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: '12px', padding: '14px', background: 'var(--green-50)', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(34,197,94,0.15)' }}>
-              <CheckCircle size={18} style={{ color: 'var(--green-600)', flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--slate-800)' }}>
-                  Platform is healthy
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--slate-500)' }}>
-                  {stats.available} foods available, {stats.assigned} in transit
-                </div>
-              </div>
-            </div>
+        {/* Recent listings table */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Recent listings</h3>
+            <span className="label-caps">{recent.length} shown</span>
           </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="card" style={{ padding: '28px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '20px', color: 'var(--slate-800)' }}>
-          Recent Activity
-        </h3>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--slate-100)' }}>
-                <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--slate-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Food</th>
-                <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--slate-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Category</th>
-                <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--slate-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location</th>
-                <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--slate-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
-                <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--slate-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Requests</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentFoods.map((food, i) => (
-                <tr key={food.id} style={{ borderBottom: '1px solid var(--slate-50)', animation: `fadeIn 0.3s ${i * 0.05}s ease both` }}>
-                  <td style={{ padding: '12px', fontSize: '0.88rem', fontWeight: 600, color: 'var(--slate-800)' }}>
-                    {food.name}
-                  </td>
-                  <td style={{ padding: '12px' }}>
-                    <span className={`badge badge-${food.category === 'non-veg' ? 'nonveg' : food.category}`}>
-                      {food.category}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px', fontSize: '0.82rem', color: 'var(--slate-500)' }}>
-                    {food.location}
-                  </td>
-                  <td style={{ padding: '12px' }}>
-                    <span className={`badge badge-${food.status}`}>{food.status}</span>
-                  </td>
-                  <td style={{ padding: '12px', fontSize: '0.82rem', color: 'var(--slate-600)', fontWeight: 500 }}>
-                    {food.requestedUsers?.length || 0}
-                  </td>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Food</th>
+                  <th>Donor</th>
+                  <th>Category</th>
+                  <th>Location</th>
+                  <th>Status</th>
+                  <th>Posted</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recent.map(food => {
+                  const date = food.createdAt?.toDate ? food.createdAt.toDate() : new Date(food.createdAt || 0);
+                  return (
+                    <tr key={food.id}>
+                      <td style={{ fontWeight: 600 }}>{food.name}</td>
+                      <td>{food.donorName}</td>
+                      <td><span className={`badge badge-${food.category === 'non-veg' ? 'nonveg' : food.category}`} style={{ textTransform: 'capitalize' }}>{food.category}</span></td>
+                      <td className="body-sm">{food.location}</td>
+                      <td><span className={`badge badge-${food.status}`} style={{ textTransform: 'capitalize' }}>{food.status}</span></td>
+                      <td className="body-sm">{date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

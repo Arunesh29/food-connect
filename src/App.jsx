@@ -10,89 +10,55 @@ import ReceiverPage from './pages/ReceiverPage';
 import VolunteerPage from './pages/VolunteerPage';
 import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
+import { useEffect } from 'react';
 
-// Loading screen while auth state resolves
 function AuthLoading() {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100vh', background: 'var(--slate-50)',
-      flexDirection: 'column', gap: '16px'
-    }}>
-      <div className="navbar-brand-icon" style={{ width: 56, height: 56, animation: 'pulse 1.5s infinite' }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-          <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66L17 8z" />
-          <path d="M20.27 5.73l-2.42-2.42a1 1 0 00-1.41 0L14 5.73" />
-        </svg>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--canvas)' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 48, height: 48, border: '3px solid var(--border)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <p style={{ color: 'var(--ink-muted)', fontSize: '0.9rem' }}>Loading…</p>
       </div>
-      <span className="spinner" />
-      <p style={{ color: 'var(--slate-400)', fontSize: '0.85rem' }}>Authenticating...</p>
     </div>
   );
 }
 
-// Protected route — checks auth + role
 function ProtectedRoute({ role, adminRedirect, children }) {
   const { user, authLoading } = useApp();
-
   if (authLoading) return <AuthLoading />;
-  if (!user) {
-    // Admin routes redirect to admin login, others to regular login
-    return <Navigate to={adminRedirect ? '/admin-login' : '/login'} replace />;
-  }
+  if (!user) return <Navigate to={adminRedirect ? '/admin-login' : '/login'} replace />;
   if (role && user.role !== role) return <Navigate to="/" replace />;
   return children;
 }
 
 function AppRoutes() {
-  const { user, authLoading } = useApp();
+  const { authLoading } = useApp();
 
-  // Show loading while Firebase auth resolves
+  useEffect(() => {
+    if (window.gsap && window.ScrollTrigger) {
+      window.gsap.registerPlugin(window.ScrollTrigger);
+    }
+  }, []);
+
   if (authLoading) return <AuthLoading />;
 
   return (
-    <div className="app-wrapper">
+    <>
       <Navbar />
-      <ToastContainer />
       <Routes>
         <Route path="/" element={<HomePage />} />
-
-        {/* Regular login */}
-        <Route path="/login" element={
-          user ? <Navigate to="/select-role" replace /> : <LoginPage />
-        } />
-
-        {/* New Role Selection Route */}
-        <Route path="/select-role" element={
-          <ProtectedRoute><LoginPage selectionOnly /></ProtectedRoute>
-        } />
-
-        {/* Admin login — separate secure page */}
-        <Route path="/admin-login" element={
-          user?.role === 'admin' ? <Navigate to="/admin" replace /> : <AdminLoginPage />
-        } />
-
-        {/* Protected role-specific routes */}
-        <Route path="/donor" element={
-          <ProtectedRoute role="donor"><DonorPage /></ProtectedRoute>
-        } />
-        <Route path="/receiver" element={
-          <ProtectedRoute role="receiver"><ReceiverPage /></ProtectedRoute>
-        } />
-        <Route path="/volunteer" element={
-          <ProtectedRoute role="volunteer"><VolunteerPage /></ProtectedRoute>
-        } />
-        <Route path="/admin" element={
-          <ProtectedRoute role="admin" adminRedirect><AdminPage /></ProtectedRoute>
-        } />
-        <Route path="/profile" element={
-          <ProtectedRoute><ProfilePage /></ProtectedRoute>
-        } />
-
-        {/* Catch-all redirect */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/select-role" element={<ProtectedRoute><LoginPage selectionOnly /></ProtectedRoute>} />
+        <Route path="/admin-login" element={<AdminLoginPage />} />
+        <Route path="/donor" element={<ProtectedRoute role="donor"><DonorPage /></ProtectedRoute>} />
+        <Route path="/receiver" element={<ProtectedRoute role="receiver"><ReceiverPage /></ProtectedRoute>} />
+        <Route path="/volunteer" element={<ProtectedRoute role="volunteer"><VolunteerPage /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute role="admin" adminRedirect><AdminPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </div>
+      <ToastContainer />
+    </>
   );
 }
 

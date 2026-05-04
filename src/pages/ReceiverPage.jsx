@@ -3,188 +3,147 @@ import { useApp } from '../context/AppContext';
 import { useFoods, requestFood } from '../services/foodService';
 import FoodCard from '../components/FoodCard';
 import SkeletonCard from '../components/SkeletonCard';
-import Modal from '../components/Modal';
-import RatingSection from '../components/RatingSection';
-import { Search, MapPin, HandHeart, Check, Filter } from 'lucide-react';
+import { Search, Check, HandHeart, X } from 'lucide-react';
+
+const CATEGORIES = [
+  { id: 'all', label: 'All' },
+  { id: 'veg', label: 'Veg' },
+  { id: 'non-veg', label: 'Non-Veg' },
+  { id: 'packed', label: 'Packed' },
+  { id: 'fresh', label: 'Fresh' },
+];
 
 export default function ReceiverPage() {
   const { user, addToast, addNotification } = useApp();
   const { foods, loading } = useFoods();
   const [search, setSearch] = useState('');
-  const [statusTab, setStatusTab] = useState('available');
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [cat, setCat] = useState('all');
+  const [tab, setTab] = useState('available');
   const [requesting, setRequesting] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(null);
+  const [confirm, setConfirm] = useState(null);
 
-  const filteredFoods = useMemo(() => {
+  const filtered = useMemo(() => {
     return foods.filter(f => {
       if (f.status === 'expired' || f.status === 'delivered') return false;
-      if (statusTab === 'available' && f.status !== 'available') return false;
-      if (statusTab === 'requested' && (!f.requestedUsers?.includes(user?.uid))) return false;
-      if (categoryFilter !== 'all' && f.category !== categoryFilter) return false;
-      if (search && !f.location.toLowerCase().includes(search.toLowerCase()) &&
-          !f.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (tab === 'available' && f.status !== 'available') return false;
+      if (tab === 'mine' && !f.requestedUsers?.includes(user?.uid)) return false;
+      if (cat !== 'all' && f.category !== cat) return false;
+      const q = search.toLowerCase();
+      if (q && !f.name.toLowerCase().includes(q) && !f.location.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [foods, search, statusTab, categoryFilter]);
+  }, [foods, tab, cat, search, user]);
 
-  async function handleRequest(food) {
+  async function doRequest(food) {
     setRequesting(food.id);
     try {
       await requestFood(food.id, user.uid);
-      addToast('success', 'Food Requested!', `You requested "${food.name}"`);
-      addNotification('Request Sent', `Your request for "${food.name}" has been submitted`);
-      setShowConfirm(null);
-    } catch (err) {
-      addToast('error', 'Error', 'Failed to request food');
+      addToast('success', 'Request sent!', `You requested "${food.name}". The donor will reach out.`);
+      addNotification('Request sent', `Your request for "${food.name}" is pending.`);
+      setConfirm(null);
+    } catch {
+      addToast('error', 'Request failed', 'Something went wrong. Please try again.');
     }
     setRequesting(null);
   }
 
-  const alreadyRequested = (food) => food.requestedUsers?.includes(user?.uid);
-
   return (
-    <div className="container page-content">
-      <div className="page-header">
-        <h1 className="page-title">🍛 Find Food</h1>
-        <p className="page-subtitle">Browse available food near you and request with one click</p>
-      </div>
-
-      {/* Search & Filters */}
-      <div className="filters-bar">
-        <div className="search-bar">
-          <Search size={18} style={{ color: 'var(--slate-400)' }} />
-          <input
-            type="text"
-            placeholder="Search by food name or location..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setSearch('')}>Clear</button>
-          )}
+    <div className="page-shell">
+      <div className="wrap section">
+        {/* Header */}
+        <div style={{ marginBottom: 40 }}>
+          <span className="label-caps" style={{ marginBottom: 10, display: 'block' }}>Food Browser</span>
+          <h1 className="display-lg">Available near you</h1>
+          <p className="body-lg" style={{ marginTop: 10 }}>Browse listings posted by donors in your community.</p>
         </div>
-      </div>
 
-      {/* Status Tabs */}
-      <div className="tabs">
-        <button className={`tab ${statusTab === 'available' ? 'active' : ''}`} onClick={() => setStatusTab('available')}>
-          🟢 Available
-        </button>
-        <button className={`tab ${statusTab === 'requested' ? 'active' : ''}`} onClick={() => setStatusTab('requested')}>
-          🟡 Requested
-        </button>
-      </div>
+        {/* Controls */}
+        <div style={{ display: 'flex', gap: 16, marginBottom: 28, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Search */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 240 }}>
+            <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-faint)', pointerEvents: 'none' }} />
+            <input
+              type="text" className="field-input" placeholder="Search food or location…"
+              value={search} onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: 40, marginBottom: 0 }}
+            />
+          </div>
 
-      {/* Category Filter */}
-      <div className="filter-chips" style={{ marginBottom: '24px' }}>
-        <span style={{ fontSize: '0.82rem', color: 'var(--slate-500)', alignSelf: 'center', fontWeight: 500 }}>
-          <Filter size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          Filter:
-        </span>
-        {[
-          { value: 'all', label: 'All' },
-          { value: 'veg', label: '🥬 Veg' },
-          { value: 'non-veg', label: '🍖 Non-Veg' },
-          { value: 'packed', label: '📦 Packed' },
-          { value: 'fresh', label: '🍎 Fresh' }
-        ].map(cat => (
-          <button
-            key={cat.value}
-            className={`filter-chip ${categoryFilter === cat.value ? 'active' : ''}`}
-            onClick={() => setCategoryFilter(cat.value)}
-          >
-            {cat.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Rating Section */}
-      <RatingSection />
-
-      {/* Food Grid */}
-      {loading ? (
-        <div className="food-grid">
-          <SkeletonCard count={6} />
+          {/* Tabs */}
+          <div className="tabs">
+            <button className={`tab-btn ${tab === 'available' ? 'active' : ''}`} onClick={() => setTab('available')}>Available</button>
+            <button className={`tab-btn ${tab === 'mine' ? 'active' : ''}`} onClick={() => setTab('mine')}>My requests</button>
+          </div>
         </div>
-      ) : filteredFoods.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">🔍</div>
-          <h3>No food found</h3>
-          <p>Try adjusting your filters or search criteria</p>
+
+        {/* Category chips */}
+        <div className="chips">
+          {CATEGORIES.map(c => (
+            <button key={c.id} className={`chip ${cat === c.id ? 'active' : ''}`} onClick={() => setCat(c.id)}>
+              {c.label}
+            </button>
+          ))}
         </div>
-      ) : (
-        <div className="food-grid">
-          {filteredFoods.map(food => (
-            <FoodCard
-              key={food.id}
-              food={food}
-              actions={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'space-between' }}>
-                  <span className="food-card-detail">
-                    <MapPin size={14} /> {food.location}
-                  </span>
-                  {alreadyRequested(food) ? (
-                    <span className="btn btn-ghost btn-sm" style={{ color: 'var(--green-600)' }}>
-                      <Check size={14} /> Requested
+
+        {/* Grid */}
+        {loading ? (
+          <div className="food-grid"><SkeletonCard count={6} /></div>
+        ) : filtered.length === 0 ? (
+          <div className="empty">
+            <div className="empty-icon">🔍</div>
+            <h3>Nothing found</h3>
+            <p>Try different search terms or check back later when new listings are posted.</p>
+            {search && <button className="btn btn-secondary btn-sm" onClick={() => setSearch('')}>Clear search</button>}
+          </div>
+        ) : (
+          <div className="food-grid">
+            {filtered.map(food => {
+              const isMine = food.requestedUsers?.includes(user?.uid);
+              return (
+                <FoodCard key={food.id} food={food} actions={
+                  isMine ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--green)', fontSize: '0.85rem', fontWeight: 600 }}>
+                      <Check size={15} /> Requested
                     </span>
                   ) : food.status === 'available' ? (
                     <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setShowConfirm(food)}
+                      className="btn btn-accent btn-sm"
+                      onClick={() => setConfirm(food)}
                       disabled={requesting === food.id}
                     >
-                      {requesting === food.id ? (
-                        <span className="spinner" />
-                      ) : (
-                        <><HandHeart size={14} /> Request</>
-                      )}
+                      {requesting === food.id ? <span className="spinner" /> : <><HandHeart size={14} /> Request</>}
                     </button>
                   ) : (
                     <span className={`badge badge-${food.status}`}>{food.status}</span>
-                  )}
-                </div>
-              }
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Confirm Modal */}
-      <Modal
-        isOpen={!!showConfirm}
-        onClose={() => setShowConfirm(null)}
-        title="Request Food"
-        footer={
-          <>
-            <button className="btn btn-ghost" onClick={() => setShowConfirm(null)}>Cancel</button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleRequest(showConfirm)}
-              disabled={requesting}
-            >
-              {requesting ? <span className="spinner" /> : <><HandHeart size={16} /> Confirm Request</>}
-            </button>
-          </>
-        }
-      >
-        {showConfirm && (
-          <div>
-            <p style={{ marginBottom: '16px', color: 'var(--slate-600)' }}>
-              You're requesting <strong>{showConfirm.name}</strong> ({showConfirm.quantity}) from{' '}
-              <strong>{showConfirm.donorName}</strong>.
-            </p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <span className={`badge badge-${showConfirm.category === 'non-veg' ? 'nonveg' : showConfirm.category}`}>
-                {showConfirm.category}
-              </span>
-              <span className="food-card-detail">
-                <MapPin size={14} /> {showConfirm.location}
-              </span>
-            </div>
+                  )
+                } />
+              );
+            })}
           </div>
         )}
-      </Modal>
+      </div>
+
+      {/* Confirm modal */}
+      {confirm && (
+        <div onClick={() => setConfirm(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 420, width: '100%', padding: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <h2 className="display-sm">Confirm request</h2>
+              <button onClick={() => setConfirm(null)} className="icon-btn"><X size={16} /></button>
+            </div>
+            <p className="body-sm" style={{ marginBottom: 24 }}>
+              You're requesting <strong>{confirm.name}</strong> ({confirm.quantity}) from <strong>{confirm.donorName}</strong>.
+              They'll be notified and can coordinate pickup with you.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-secondary" onClick={() => setConfirm(null)}>Cancel</button>
+              <button className="btn btn-accent" onClick={() => doRequest(confirm)} disabled={requesting === confirm.id} style={{ flex: 1, justifyContent: 'center' }}>
+                {requesting === confirm.id ? <span className="spinner" /> : 'Yes, request this'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
