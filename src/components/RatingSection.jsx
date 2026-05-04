@@ -17,7 +17,7 @@ export default function RatingSection() {
     return foods.filter(f =>
       f.status === 'delivered' &&
       !f.rating &&
-      f.requestedUsers?.includes(user?.id)
+      f.requestedUsers?.includes(user?.uid)
     );
   }, [foods, user]);
 

@@ -20,7 +20,7 @@ export default function ReceiverPage() {
     return foods.filter(f => {
       if (f.status === 'expired' || f.status === 'delivered') return false;
       if (statusTab === 'available' && f.status !== 'available') return false;
-      if (statusTab === 'requested' && f.status !== 'requested') return false;
+      if (statusTab === 'requested' && (!f.requestedUsers?.includes(user?.uid))) return false;
       if (categoryFilter !== 'all' && f.category !== categoryFilter) return false;
       if (search && !f.location.toLowerCase().includes(search.toLowerCase()) &&
           !f.name.toLowerCase().includes(search.toLowerCase())) return false;
