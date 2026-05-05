@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Bell, LogOut, ChevronDown, X } from 'lucide-react';
+import { Bell, LogOut, ChevronDown, X, Menu } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout, notifications, markAllNotificationsRead } = useApp();
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
   const notifRef = useRef(null);
 
   useEffect(() => {
@@ -25,6 +26,11 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenu(false);
+  }, [location.pathname]);
+
   const unread = notifications.filter(n => !n.read).length;
 
   const navItems = user ? (() => {
@@ -40,7 +46,7 @@ export default function Navbar() {
   return (
     <nav className={`navbar ${scrolled ? 'solid' : ''}`}>
       {/* Logo */}
-      <Link to="/" className="navbar-logo">
+      <Link to="/" className="navbar-logo" style={{ zIndex: 1100 }}>
         <div className="navbar-logo-mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
             <path d="M12 2C8 6 4 8 4 14a8 8 0 0016 0c0-6-4-8-8-12z"/>
@@ -51,16 +57,22 @@ export default function Navbar() {
 
       {/* Nav links */}
       {user && (
-        <div className="navbar-links">
+        <div className={`navbar-links ${mobileMenu ? 'mobile-open' : ''}`}>
           {navItems.map(item => (
             <Link
               key={item.to}
               to={item.to}
               className={location.pathname === item.to ? 'active' : ''}
+              onClick={() => setMobileMenu(false)}
             >
               {item.label}
             </Link>
           ))}
+          {mobileMenu && (
+            <button className="btn btn-secondary" onClick={logout} style={{ marginTop: 20 }}>
+              <LogOut size={18} /> Sign Out
+            </button>
+          )}
         </div>
       )}
 
@@ -68,7 +80,7 @@ export default function Navbar() {
       <div className="navbar-user">
         {!user ? (
           <>
-            <Link to="/login" className="btn btn-secondary btn-sm">Sign In</Link>
+            <Link to="/login" className="btn btn-secondary btn-sm" style={{ display: window.innerWidth < 480 ? 'none' : 'flex' }}>Sign In</Link>
             <Link to="/login" className="btn btn-primary btn-sm">Get Started</Link>
           </>
         ) : (
@@ -114,16 +126,28 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Avatar */}
-            <Link to="/profile" className="navbar-avatar" title={user.name}>
-              {user.photoURL
-                ? <img src={user.photoURL} alt={user.name} />
-                : user.name.charAt(0).toUpperCase()
-              }
-            </Link>
+            {/* Mobile Menu Toggle */}
+            <button
+              className="icon-btn"
+              onClick={() => setMobileMenu(!mobileMenu)}
+              style={{ display: 'none' }} /* controlled via CSS media query if I added one, but I'll add inline for safety */
+              id="mobile-menu-btn"
+            >
+              {mobileMenu ? <X size={20} /> : <Menu size={20} />}
+            </button>
 
-            {/* Logout */}
-            <button className="icon-btn" onClick={logout} title="Sign out">
+            {/* Avatar - hidden on very small mobile if menu is open */}
+            {!mobileMenu && (
+              <Link to="/profile" className="navbar-avatar" title={user.name}>
+                {user.photoURL
+                  ? <img src={user.photoURL} alt={user.name} />
+                  : user.name.charAt(0).toUpperCase()
+                }
+              </Link>
+            )}
+
+            {/* Logout - hidden on mobile (moved to menu) */}
+            <button className="icon-btn desktop-only" onClick={logout} title="Sign out" style={{ display: window.innerWidth < 860 ? 'none' : 'flex' }}>
               <LogOut size={17} />
             </button>
           </>

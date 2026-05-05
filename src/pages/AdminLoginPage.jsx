@@ -1,11 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Shield, Lock, Eye, EyeOff, ArrowLeft, AlertTriangle, Fingerprint } from 'lucide-react';
 
 export default function AdminLoginPage() {
-  const { loginAsAdmin, addToast } = useApp();
-  const navigate = useNavigate();
+  const { user, loginAsAdmin, addToast } = useApp();
+
+  // Redirect if already logged in as admin
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      navigate('/admin');
+    }
+  }, [user, navigate]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

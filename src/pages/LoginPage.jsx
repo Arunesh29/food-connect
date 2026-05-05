@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Heart, ShoppingBag, Bike, ArrowRight, Chrome } from 'lucide-react';
@@ -12,6 +12,13 @@ export default function LoginPage({ selectionOnly }) {
   const [pendingUser, setPendingUser] = useState(selectionOnly ? user : null);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && user.role && !selectionOnly) {
+      navigate(`/${user.role}`);
+    }
+  }, [user, navigate, selectionOnly]);
+
   // If selectionOnly (user logged in, no role) go straight to role pick
   if (selectionOnly && !pendingUser && user) {
     setPendingUser(user);
@@ -21,8 +28,12 @@ export default function LoginPage({ selectionOnly }) {
     setLoading(true);
     try {
       const u = await loginWithGoogle();
-      setPendingUser(u);
-      setMode('role');
+      if (u.role) {
+        navigate(`/${u.role}`);
+      } else {
+        setPendingUser(u);
+        setMode('role');
+      }
     } catch {
       addToast('error', 'Sign-in failed', 'Could not sign in with Google.');
     }

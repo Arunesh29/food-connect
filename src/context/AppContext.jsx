@@ -71,11 +71,15 @@ export function AppProvider({ children }) {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
+      
+      const profile = await getUserProfile(firebaseUser.uid);
+      
       return {
         uid: firebaseUser.uid,
-        name: firebaseUser.displayName || 'User',
+        name: profile?.name || firebaseUser.displayName || 'User',
         email: firebaseUser.email,
-        photoURL: firebaseUser.photoURL,
+        photoURL: profile?.photoURL || firebaseUser.photoURL,
+        role: profile?.role || null
       };
     } catch (error) {
       console.error('Google sign-in error:', error);
