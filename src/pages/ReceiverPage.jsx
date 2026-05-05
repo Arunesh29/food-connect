@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { useFoods, requestFood } from '../services/foodService';
+import { useFoods, requestFood, cancelRequest } from '../services/foodService';
 import FoodCard from '../components/FoodCard';
 import SkeletonCard from '../components/SkeletonCard';
 import { Search, Check, HandHeart, X } from 'lucide-react';
@@ -102,9 +102,27 @@ export default function ReceiverPage() {
               return (
                 <FoodCard key={food.id} food={food} actions={
                   isMine ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--green)', fontSize: '0.85rem', fontWeight: 600 }}>
-                      <Check size={15} /> Requested
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--green)', fontSize: '0.85rem', fontWeight: 600 }}>
+                        <Check size={15} /> Requested
+                      </span>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 600 }}
+                        onClick={async () => {
+                          if (window.confirm(`Cancel request for "${food.name}"?`)) {
+                            try {
+                              await cancelRequest(food.id, user.uid);
+                              addToast('info', 'Request cancelled', 'Your request has been removed.');
+                            } catch {
+                              addToast('error', 'Error', 'Could not cancel request.');
+                            }
+                          }
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   ) : food.status === 'available' ? (
                     <button
                       className="btn btn-accent btn-sm"

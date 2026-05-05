@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { useFoods, acceptDelivery, markDelivered } from '../services/foodService';
+import { useFoods, acceptDelivery, markDelivered, unassignDelivery } from '../services/foodService';
 import FoodCard from '../components/FoodCard';
 import SkeletonCard from '../components/SkeletonCard';
 import { Truck, CheckCircle, MapPin, X, Package, Navigation } from 'lucide-react';
@@ -96,14 +96,34 @@ export default function VolunteerPage() {
                       </button>
                     )}
                     {tab === 'mine' && (
-                      <>
-                        <button className="btn btn-secondary btn-sm" onClick={() => setTracking(food)}>
-                          <Navigation size={13} /> Track
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setTracking(food)} style={{ flex: 1 }}>
+                            <Navigation size={13} /> Track
+                          </button>
+                          <button className="btn btn-primary btn-sm" onClick={() => complete(food)} disabled={processing === food.id} style={{ flex: 1 }}>
+                            {processing === food.id ? <span className="spinner" /> : <><CheckCircle size={13} /> Done</>}
+                          </button>
+                        </div>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: 'var(--accent)', fontSize: '0.72rem', padding: '4px 0' }}
+                          onClick={async () => {
+                            if (window.confirm('Unable to deliver this? It will be put back on the "Needs delivery" list.')) {
+                              setProcessing(food.id);
+                              try {
+                                await unassignDelivery(food.id);
+                                addToast('info', 'Delivery unassigned', 'The item is back on the public list.');
+                              } catch {
+                                addToast('error', 'Error', 'Could not unassign delivery.');
+                              }
+                              setProcessing(null);
+                            }
+                          }}
+                        >
+                          Unable to deliver
                         </button>
-                        <button className="btn btn-primary btn-sm" onClick={() => complete(food)} disabled={processing === food.id}>
-                          {processing === food.id ? <span className="spinner" /> : <><CheckCircle size={13} /> Done</>}
-                        </button>
-                      </>
+                      </div>
                     )}
                     {tab === 'done' && (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--green)', fontSize: '0.82rem', fontWeight: 600 }}>

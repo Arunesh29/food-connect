@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverTimestamp, arrayUnion, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, getDoc, updateDoc, addDoc, serverTimestamp, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 
@@ -205,6 +205,59 @@ export async function deleteFood(foodId) {
     return;
   }
   await deleteDoc(doc(db, 'foods', foodId));
+}
+
+/**
+ * Cancel a food request
+ */
+export async function cancelRequest(foodId, userId) {
+  if (USE_LOCAL) {
+    localFoods = localFoods.map(f => {
+      if (f.id === foodId) {
+        const requestedUsers = f.requestedUsers.filter(uid => uid !== userId);
+        return {
+          ...f,
+          requestedUsers,
+          status: requestedUsers.length === 0 ? 'available' : f.status
+        };
+      }
+      return f;
+    });
+    notifyListeners();
+    return;
+  }
+
+  const foodRef = doc(db, 'foods', foodId);
+  const foodSnap = await getDoc(foodRef);
+  if (foodSnap.exists()) {
+    const data = foodSnap.data();
+    const requestedUsers = (data.requestedUsers || []).filter(uid => uid !== userId);
+    await updateDoc(foodRef, {
+      requestedUsers,
+      status: requestedUsers.length === 0 ? 'available' : data.status
+    });
+  }
+}
+
+/**
+ * Unassign a delivery (unable to deliver)
+ */
+export async function unassignDelivery(foodId) {
+  if (USE_LOCAL) {
+    localFoods = localFoods.map(f => {
+      if (f.id === foodId) {
+        return { ...f, assignedVolunteer: null, status: 'requested' };
+      }
+      return f;
+    });
+    notifyListeners();
+    return;
+  }
+
+  await updateDoc(doc(db, 'foods', foodId), {
+    assignedVolunteer: null,
+    status: 'requested'
+  });
 }
 
 export async function uploadImage(file) {
