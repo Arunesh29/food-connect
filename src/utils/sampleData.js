@@ -1,0 +1,80 @@
+export const SAMPLE_FOODS = [
+  {
+    name: "Artisan Sourdough Loaves",
+    donorName: "The Crusty Corner Bakery",
+    donorId: "donor_bakery_1",
+    category: "packed",
+    description: "5 fresh sourdough loaves baked this morning. Surplus from our daily stock.",
+    quantity: "5 loaves",
+    location: "Indiranagar, Bangalore",
+    expiryTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    imageUrl: "https://images.unsplash.com/photo-1585478259715-876acc5be8eb?auto=format&fit=crop&q=80&w=800",
+    status: "available",
+    veg: true
+  },
+  {
+    name: "Organic Fruit Basket",
+    donorName: "Green Harvest Mart",
+    donorId: "donor_market_1",
+    category: "fresh",
+    description: "Assorted seasonal fruits including apples, bananas, and oranges. Slightly bruised but perfectly good.",
+    quantity: "3 kg",
+    location: "Koramangala, Bangalore",
+    expiryTime: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+    imageUrl: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=80&w=800",
+    status: "available",
+    veg: true
+  },
+  {
+    name: "Homemade Veg Biryani",
+    donorName: "Priya Sharma",
+    donorId: "donor_priya_1",
+    category: "veg",
+    description: "Large container of freshly made vegetable biryani from a small home gathering.",
+    quantity: "Serves 8-10",
+    location: "HSR Layout, Bangalore",
+    expiryTime: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+    imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21bc4a4f8?auto=format&fit=crop&q=80&w=800",
+    status: "available",
+    veg: true
+  },
+  {
+    name: "Chicken Curry & Rice",
+    donorName: "The Spice Club",
+    donorId: "donor_restaurant_1",
+    category: "non-veg",
+    description: "Packed meal boxes with chicken curry, basmati rice, and salad. From today's lunch special.",
+    quantity: "4 boxes",
+    location: "MG Road, Bangalore",
+    expiryTime: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+    imageUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800",
+    status: "available",
+    veg: false
+  },
+  {
+    name: "Sealed Milk Cartons",
+    donorName: "City Dairy Co.",
+    donorId: "donor_dairy_1",
+    category: "packed",
+    description: "Full cream milk cartons. Best before date is approaching (2 days left).",
+    quantity: "12 cartons (1L each)",
+    location: "Whitefield, Bangalore",
+    expiryTime: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+    imageUrl: "https://images.unsplash.com/photo-1563636619-e9107daafbc9?auto=format&fit=crop&q=80&w=800",
+    status: "available",
+    veg: true
+  },
+  {
+    name: "Vegetable Pasta Trays",
+    donorName: "Italiano Express",
+    donorId: "donor_italiano_1",
+    category: "veg",
+    description: "Penne pasta with roasted vegetables and marinara sauce. Prepared 2 hours ago.",
+    quantity: "2 large trays",
+    location: "Jayanagar, Bangalore",
+    expiryTime: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+    imageUrl: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&q=80&w=800",
+    status: "available",
+    veg: true
+  }
+];

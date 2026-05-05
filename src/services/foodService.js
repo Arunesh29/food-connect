@@ -3,10 +3,32 @@ import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverT
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 
+import { SAMPLE_FOODS } from '../utils/sampleData';
+
 // Set to false to use Firebase (true = demo data only)
 const USE_LOCAL = false;
 
-let localFoods = [];
+let localFoods = [...SAMPLE_FOODS];
+
+/**
+ * Seed the database with sample data
+ */
+export async function seedDatabase() {
+  if (USE_LOCAL) {
+    localFoods = [...SAMPLE_FOODS];
+    notifyListeners();
+    return;
+  }
+  
+  const foodsCol = collection(db, 'foods');
+  for (const food of SAMPLE_FOODS) {
+    await addDoc(foodsCol, {
+      ...food,
+      createdAt: serverTimestamp(),
+      expiryTime: new Date(food.expiryTime) // Ensure it's a Date object for Firestore
+    });
+  }
+}
 
 const CATEGORY_IMAGES = {
   veg: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800',

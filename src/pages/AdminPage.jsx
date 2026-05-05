@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
-import { useFoods } from '../services/foodService';
-import { Package, Truck, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useFoods, seedDatabase } from '../services/foodService';
+import { Package, Truck, CheckCircle, Clock, TrendingUp, Database, RefreshCw } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 function StatCard({ icon, label, value, color }) {
   return (
@@ -45,10 +46,21 @@ export default function AdminPage() {
   return (
     <div className="page-shell">
       <div className="wrap section">
-        <div style={{ marginBottom: 48 }}>
-          <span className="label-caps" style={{ marginBottom: 10, display: 'block' }}>Admin Panel</span>
-          <h1 className="display-lg">Dashboard</h1>
-          <p className="body-lg" style={{ marginTop: 10 }}>Overview of all food listings across the platform.</p>
+        <div style={{ marginBottom: 48, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 20 }}>
+          <div>
+            <span className="label-caps" style={{ marginBottom: 10, display: 'block' }}>Admin Panel</span>
+            <h1 className="display-lg">Dashboard</h1>
+            <p className="body-lg" style={{ marginTop: 10 }}>Overview of all food listings across the platform.</p>
+          </div>
+          <button 
+            className="btn btn-secondary" 
+            onClick={handleSeed} 
+            disabled={seeding}
+            style={{ borderColor: 'var(--amber)', color: 'var(--amber)' }}
+          >
+            {seeding ? <RefreshCw className="spinner" size={18} /> : <Database size={18} />}
+            Seed Sample Data
+          </button>
         </div>
 
         {/* Stat cards */}
