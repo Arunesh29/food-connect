@@ -315,7 +315,32 @@ export default function DonorPage() {
                       Past listings ({others.length})
                     </h3>
                     <div className="food-grid">
-                      {others.map(food => <FoodCard key={food.id} food={food} />)}
+                      {others.map(food => (
+                        <FoodCard key={food.id} food={food} actions={
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            <span className={`badge badge-${food.status}`}>{food.status}</span>
+                            {food.status !== 'delivered' && (
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm(`Are you sure you want to delete "${food.name}"?`)) {
+                                    try {
+                                      await deleteFood(food.id);
+                                      addToast('success', 'Deleted', 'Your listing has been removed.');
+                                    } catch {
+                                      addToast('error', 'Error', 'Could not delete listing.');
+                                    }
+                                  }
+                                }}
+                                className="btn btn-ghost btn-sm"
+                                style={{ color: 'var(--accent)', padding: '6px 10px' }}
+                                title="Remove listing"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                        } />
+                      ))}
                     </div>
                   </div>
                 )}
